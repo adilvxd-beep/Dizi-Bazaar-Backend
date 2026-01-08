@@ -1,0 +1,23 @@
+{
+  "name": "dizi-bazaar-backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "pg": "^8.11.3",
+    "bcrypt": "^6.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^4.3.5",
+    "redis": "^5.10.0"
+  }
+}

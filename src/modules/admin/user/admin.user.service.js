@@ -15,7 +15,8 @@ export const createNewUser = async (userData) => {
   return await createUser(userData);
 };
 
-export const loginUser = async (email, password) => {
+export const loginUser = async (userData) => {
+  const { email, password } = userData;
   const user = await findUserByEmail(email);
   if (!user) throw new Error("User not found");
   const isValid = await bcrypt.compare(password, user.password);

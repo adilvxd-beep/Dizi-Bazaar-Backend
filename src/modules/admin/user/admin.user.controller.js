@@ -22,8 +22,7 @@ export const createUser = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const result = await loginUser(email, password);
+    const result = await loginUser(req.body);
     res.json(new ApiResponse(200, result));
   } catch (error) {
     next(new ApiError(401, error.message));

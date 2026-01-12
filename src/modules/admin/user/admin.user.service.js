@@ -3,9 +3,8 @@ import {
   createUser,
   findUserByEmail,
 } from "./admin.user.repository.js";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { env } from "../../../config/index.js";
+import { generateToken } from "../../../shared/utils/jwtToken.js";
 
 export const getAllUsers = async () => {
   return await findAllUsers();
@@ -21,7 +20,7 @@ export const loginUser = async (userData) => {
   if (!user) throw new Error("User not found");
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) throw new Error("Invalid password");
-  const token = jwt.sign({ id: user.id, role: user.role }, env.JWT_SECRET);
+  const token = generateToken({ id: user.id, role: user.role });
   return {
     token,
     user: {

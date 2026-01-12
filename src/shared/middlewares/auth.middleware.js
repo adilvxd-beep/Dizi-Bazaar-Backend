@@ -1,5 +1,4 @@
-import jwt from "jsonwebtoken";
-import { env } from "../../config/index.js";
+import { verifyToken } from "../utils/jwtToken.js";
 import ApiError from "../utils/ApiError.js";
 
 export const authenticate = (req, res, next) => {
@@ -8,7 +7,7 @@ export const authenticate = (req, res, next) => {
     return next(new ApiError(401, "Access denied. No token provided."));
   }
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+    const decoded = verifyToken(token);
     req.user = decoded;
     next();
   } catch (error) {

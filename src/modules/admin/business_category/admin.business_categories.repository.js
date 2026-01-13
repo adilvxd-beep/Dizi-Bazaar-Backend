@@ -59,10 +59,10 @@ export const findAllBusinessCategories = async (query) => {
 
 
 export const createBusinessCategory = async (categoryData) => {
-  const { name, description } = categoryData;
+  const { name, status } = categoryData;
   const result = await pool.query(
-    "INSERT INTO business_categories (name) VALUES ($1) RETURNING *",
-    [name]
+    "INSERT INTO business_categories (name, status) VALUES ($1, $2) RETURNING *",
+    [name, status]
   );
   return result.rows[0];
 };

@@ -1,5 +1,4 @@
-import e from "express";
-import { findAllBusinessCategories, createBusinessCategory, updateBusinessCategory, deleteBusinessCategory, updateBusinessCategoryStatus} from "./admin.business_categories.repository.js";
+import { findAllBusinessCategories, createBusinessCategory, updateBusinessCategory, updateRestrictedBusinessCategoryStatus, deleteBusinessCategory} from "./admin.business_categories.repository.js";
 
 function formatName(name) {
   if (!name) return name;
@@ -23,8 +22,17 @@ export const updateExistingBusinessCategory = async (id, categoryData) => {
   return await updateBusinessCategory(id, categoryData);
 };
 
-export const updateExistingBusinessCategoryStatus = async (id, status) => {
-  return await updateBusinessCategoryStatus(id, status);
+//update status with restrictions
+export const changeBusinessCategoryStatus = async (id, status) => {
+  if (!id) {
+    throw new Error("Business category id is required");
+  }
+
+  if (!["active", "inactive"].includes(status)) {
+    throw new Error("Invalid status value");
+  }
+
+  return await updateRestrictedBusinessCategoryStatus(Number(id), status);
 };
 
 export const deleteBusinessCategoryById = async (id) => {

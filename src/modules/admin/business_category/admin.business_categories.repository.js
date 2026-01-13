@@ -75,13 +75,52 @@ export const updateBusinessCategory = async (id, categoryData) => {
   );
   return result.rows[0];
 }
-export const updateBusinessCategoryStatus = async (id, status) => {
-  const result = await pool.query(
-    "UPDATE business_categories SET status = $1 WHERE id = $2 RETURNING *",       
-    [status, id]
+
+export const updateRestrictedBusinessCategoryStatus = async (id, status) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Update business category status
+    const result = await client.query(
+      `UPDATE business_categories
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [status, id]
+    );
+
+    // 2️⃣ If business category is inactivated,
+    //    inactivate all linked categories
+    if (status === "inactive") {
+      await client.query(
+        `UPDATE categories
+         SET status = 'inactive', updated_at = NOW()
+         WHERE business_category_id = $1`,
+        [id]
+      );
+    }
+    if (status === "active") {
+  await client.query(
+    `UPDATE categories
+     SET status = 'active', updated_at = NOW()
+     WHERE business_category_id = $1`,
+    [id]
   );
-  return result.rows[0];
-} 
+}
+
+    await client.query("COMMIT");
+
+    return result.rows[0];
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
 
 export const deleteBusinessCategory = async (id) => {
   await pool.query(

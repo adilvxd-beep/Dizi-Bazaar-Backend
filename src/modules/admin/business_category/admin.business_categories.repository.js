@@ -1,5 +1,13 @@
 import pool from "../../../shared/db/postgres.js";
 
+export const findBusinessCategoryById = async (id) => {
+  const result = await pool.query(
+    "SELECT * FROM business_categories WHERE id = $1",
+    [id]
+  );
+  return result.rows[0];
+}
+
 export const findAllBusinessCategories = async (query = {}) => {
   const {
     search,

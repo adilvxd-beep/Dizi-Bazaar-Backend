@@ -1,5 +1,5 @@
 import express from "express";  
-import { getBusinessCategories, createBusinessCategory, updateBusinessCategory, deleteBusinessCategory, updateBusinessCategoryStatus } from "./admin.business_categories.controller.js";
+import { getBusinessCategories, getAllBusinessCategoryById, createBusinessCategory, updateBusinessCategory, deleteBusinessCategory, updateBusinessCategoryStatus } from "./admin.business_categories.controller.js";
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";  
 import { authorize } from "../../../shared/middlewares/role.middleware.js";  
 import { ROLES } from "../../../shared/constants/roles.js";  
@@ -13,6 +13,7 @@ import {
 const router = express.Router();
 
 router.get("/", authenticate, authorize(ROLES.ADMIN), getBusinessCategories);  
+router.get("/:id", authenticate, authorize(ROLES.ADMIN), getAllBusinessCategoryById);
 router.post("/", authenticate, authorize(ROLES.ADMIN), validate(createBusinessCategorySchema), createBusinessCategory);
 router.put("/:id", authenticate, authorize(ROLES.ADMIN), updateBusinessCategory);
 router.patch("/:id/status", authenticate, authorize(ROLES.ADMIN), validate(businessCategoryStatusSchema), updateBusinessCategoryStatus);

@@ -1,5 +1,6 @@
 import {
   getAllBusinessCategories,
+  getBusinessCategoryById,
   createNewBusinessCategory,
   updateExistingBusinessCategory,
   changeBusinessCategoryStatus,
@@ -13,6 +14,17 @@ export const getBusinessCategories = async (req, res, next) => {
   try {
     const categories = await getAllBusinessCategories(req.query);
     res.json(new ApiResponse(200, categories));
+  } catch (error) {
+    next(new ApiError(400, error.message));
+  }
+};
+
+export const getAllBusinessCategoryById = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const category = await getBusinessCategoryById(id);
+    res.json(new ApiResponse(200, category));
   } catch (error) {
     next(new ApiError(400, error.message));
   }

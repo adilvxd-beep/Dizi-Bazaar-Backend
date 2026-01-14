@@ -1,10 +1,14 @@
-import { findAllBusinessCategories, createBusinessCategory, updateBusinessCategory, updateRestrictedBusinessCategoryStatus, deleteBusinessCategory} from "./admin.business_categories.repository.js";
+import { findAllBusinessCategories, findBusinessCategoryById, createBusinessCategory, updateBusinessCategory, updateRestrictedBusinessCategoryStatus, deleteBusinessCategory} from "./admin.business_categories.repository.js";
 
 function formatName(name) {
   if (!name) return name;
   const cleaned = name.trim().toLowerCase();
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
+
+export const getBusinessCategoryById = async (id) => {
+  return await findBusinessCategoryById(id);
+};
 
 export const getAllBusinessCategories = async (query) => {
   return await findAllBusinessCategories(query);

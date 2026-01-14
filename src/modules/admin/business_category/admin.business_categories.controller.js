@@ -50,13 +50,12 @@ export const updateBusinessCategory = async (req, res, next) => {
   }
 };
 
-// ✅ RESTRICTED + CASCADE STATUS UPDATE
+// RESTRICTED + CASCADE STATUS UPDATE
 export const updateBusinessCategoryStatus = async (req, res, next) => {
   const { id } = req.params;
-  const { status } = req.body;
 
   try {
-    const category = await changeBusinessCategoryStatus(id, status);
+    const category = await changeBusinessCategoryStatus(id);
     res.json(new ApiResponse(200, category));
   } catch (error) {
     next(new ApiError(400, error.message));

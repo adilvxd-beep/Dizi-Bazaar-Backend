@@ -7,8 +7,3 @@ export const createBusinessCategorySchema = z.object(
     }
 );
 
-export const businessCategoryStatusSchema = z.object(
-    {
-    status: z.enum(["active", "inactive"], "Invalid status value")
-    }
-);

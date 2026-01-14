@@ -27,16 +27,12 @@ export const updateExistingBusinessCategory = async (id, categoryData) => {
 };
 
 //update status with restrictions
-export const changeBusinessCategoryStatus = async (id, status) => {
+export const changeBusinessCategoryStatus = async (id) => {
   if (!id) {
     throw new Error("Business category id is required");
   }
 
-  if (!["active", "inactive"].includes(status)) {
-    throw new Error("Invalid status value");
-  }
-
-  return await updateRestrictedBusinessCategoryStatus(Number(id), status);
+  return await updateRestrictedBusinessCategoryStatus(Number(id));
 };
 
 export const deleteBusinessCategoryById = async (id) => {

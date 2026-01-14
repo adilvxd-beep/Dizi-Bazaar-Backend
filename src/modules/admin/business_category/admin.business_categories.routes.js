@@ -6,7 +6,6 @@ import { ROLES } from "../../../shared/constants/roles.js";
 import { validate } from "../../../shared/middlewares/validate.middleware.js";  
 import {
   createBusinessCategorySchema,
-  businessCategoryStatusSchema
 } from "./admin.business_categories.schema.js";
 
 
@@ -16,7 +15,7 @@ router.get("/", authenticate, authorize(ROLES.ADMIN), getBusinessCategories);
 router.get("/:id", authenticate, authorize(ROLES.ADMIN), getAllBusinessCategoryById);
 router.post("/", authenticate, authorize(ROLES.ADMIN), validate(createBusinessCategorySchema), createBusinessCategory);
 router.put("/:id", authenticate, authorize(ROLES.ADMIN), updateBusinessCategory);
-router.patch("/:id/status", authenticate, authorize(ROLES.ADMIN), validate(businessCategoryStatusSchema), updateBusinessCategoryStatus);
+router.patch("/:id/status", authenticate, authorize(ROLES.ADMIN), updateBusinessCategoryStatus);
 router.delete("/:id", authenticate, authorize(ROLES.ADMIN), deleteBusinessCategory);
 
 

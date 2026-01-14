@@ -1,6 +1,29 @@
 import pool from "../../../shared/db/postgres.js";
 
 
+export const findCategoryById = async (categoryId) => {
+    const result = await pool.query(
+        `
+        SELECT
+            c.id,
+            c.name,
+            c.image_url,
+            c.status,
+            c.created_at,
+            c.updated_at,
+            bc.id     AS business_category_id,
+            bc.name   AS business_category_name,
+            bc.status AS business_category_status
+        FROM categories c
+        JOIN business_categories bc
+            ON bc.id = c.business_category_id
+        WHERE c.id = $1 
+        `,
+        [categoryId]
+    );
+    return result.rows[0];
+};
+
 export const findAllCategories = async (query = {}) => {
   const {
     search,
@@ -77,7 +100,7 @@ export const findAllCategories = async (query = {}) => {
 
   // Count query (same filters, no pagination)
   const countQuery = `
-    SELECT COUNT(*)::int AS count
+    SELECT COUNT(*)::int AS countgetAllBusinessCategoryById
     FROM categories c
     JOIN business_categories bc
       ON bc.id = c.business_category_id
@@ -95,7 +118,6 @@ export const findAllCategories = async (query = {}) => {
     currentPage,
   };
 };
-
 
 export const createCategory = async (categoryData) => {
     const { name, business_category_id, image_url, status } = categoryData;
@@ -130,6 +152,13 @@ export const updateCategory = async (categoryId, updateData) => {
     return result.rows[0];
 };      
 
+export const updateCategoryStatus = async (categoryId, status) => {
+    const result = await pool.query(
+        "UPDATE categories SET status = $1 WHERE id = $2 RETURNING *",
+        [status, categoryId]
+    );
+    return result.rows[0];
+};
 
 export const deleteCategoryById = async (categoryId) => {
     const result = await pool.query(

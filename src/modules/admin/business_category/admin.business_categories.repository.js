@@ -2,11 +2,11 @@ import pool from "../../../shared/db/postgres.js";
 
 export const findBusinessCategoryById = async (id) => {
   const result = await pool.query(
-    "SELECT * FROM business_categories WHERE id = $1",
+    "SELECT * FROM business_categories WHERE id = $1 ",
     [id]
   );
   return result.rows[0];
-}
+};
 
 export const findAllBusinessCategories = async (query = {}) => {
   const {
@@ -25,9 +25,7 @@ export const findAllBusinessCategories = async (query = {}) => {
 
   // Allowed sortable columns (SQL injection protection)
   const allowedSortBy = ["id", "name", "created_at"];
-  const sortColumn = allowedSortBy.includes(sortBy)
-    ? sortBy
-    : "created_at";
+  const sortColumn = allowedSortBy.includes(sortBy) ? sortBy : "created_at";
 
   const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
 
@@ -97,46 +95,51 @@ export const updateBusinessCategory = async (id, categoryData) => {
     [name, id]
   );
   return result.rows[0];
-}
+};
 
-export const updateRestrictedBusinessCategoryStatus = async (id, status) => {
+export const updateRestrictedBusinessCategoryStatus = async (id) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ Update business category status
+    // 1️⃣ Toggle business category status based on current value
     const result = await client.query(
-      `UPDATE business_categories
-       SET status = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [status, id]
+      `
+      UPDATE business_categories
+      SET status = (
+        CASE
+          WHEN status = 'active' THEN 'inactive'
+          ELSE 'active'
+        END
+      )::status,
+      updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, status
+      `,
+      [id]
     );
 
-    // 2️⃣ If business category is inactivated,
-    //    inactivate all linked categories
-    if (status === "inactive") {
-      await client.query(
-        `UPDATE categories
-         SET status = 'inactive', updated_at = NOW()
-         WHERE business_category_id = $1`,
-        [id]
-      );
+    if (result.rowCount === 0) {
+      throw new Error("Business category not found");
     }
-    if (status === "active") {
-  await client.query(
-    `UPDATE categories
-     SET status = 'active', updated_at = NOW()
-     WHERE business_category_id = $1`,
-    [id]
-  );
-}
+
+    const newStatus = result.rows[0].status;
+
+    // 2️⃣ Update all linked categories with the new status
+    await client.query(
+      `
+      UPDATE categories
+      SET status = $1,
+          updated_at = NOW()
+      WHERE business_category_id = $2
+      `,
+      [newStatus, id]
+    );
 
     await client.query("COMMIT");
 
     return result.rows[0];
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -146,8 +149,5 @@ export const updateRestrictedBusinessCategoryStatus = async (id, status) => {
 };
 
 export const deleteBusinessCategory = async (id) => {
-  await pool.query(
-    "DELETE FROM business_categories WHERE id = $1",
-    [id]
-  );
-}
+  await pool.query("DELETE FROM business_categories WHERE id = $1", [id]);
+};

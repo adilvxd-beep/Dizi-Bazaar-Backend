@@ -1,10 +1,23 @@
-import { findAllCategories, createCategory, updateCategory, deleteCategoryById } from "./admin.categories.repository.js";
+import { findAllCategories, findCategoryById, createCategory, updateCategory, updateCategoryStatus, deleteCategoryById } from "./admin.categories.repository.js";
 
 function formatName(name) {
   if (!name) return name;
   const cleaned = name.trim().toLowerCase();
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
+
+export const getCategoryById = async (categoryId) => {
+  if (!categoryId) {
+    throw new Error("Category id is required");
+  }
+
+  const category = await findCategoryById(categoryId);
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  return category;
+};
 
 export const getAllCategories = async (query) => {
   return await findAllCategories(query);
@@ -55,6 +68,18 @@ export const updateCategoryById = async (categoryId, updateData) => {
   }
 
   return await updateCategory(categoryId, updateData);
+};
+
+export const changeCategoryStatus = async (categoryId, status) => {
+  if (!categoryId) {
+    throw new Error("Category id is required");
+  }
+
+  if (!status || (status !== "active" && status !== "inactive")) {
+    throw new Error("Invalid status value");
+  }
+
+  return await updateCategoryStatus(categoryId, status);
 };
 
 export const removeCategoryById = async (categoryId) => {

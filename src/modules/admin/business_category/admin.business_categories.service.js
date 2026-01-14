@@ -7,12 +7,7 @@ function formatName(name) {
 }
 
 export const getAllBusinessCategories = async (query) => {
-  const data = await findAllBusinessCategories(query);
-  const length = Math.ceil(data.length) / (query.limit || 10);
-  return {
-    items: data,
-    totalPages: length
-  }
+  return await findAllBusinessCategories(query);
 };
 
 

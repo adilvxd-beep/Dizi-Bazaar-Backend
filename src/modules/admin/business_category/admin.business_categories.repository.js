@@ -54,7 +54,20 @@ export const findAllBusinessCategories = async (query) => {
 
   const result = await pool.query(sql, values);
 
-  return result.rows;
+  const length = `SELECT COUNT(*) FROM business_categories ${whereClause}`;
+  const countResult = await pool.query(length, values.slice(0, -2));
+  const totalItems = parseInt(countResult.rows[0].count, 10);
+
+  // You can return totalItems, totalPages, currentPage if needed
+  const totalPages = Math.ceil(totalItems / (query.limit || 10));
+  const currentPage = page;
+
+  return {
+    items: result.rows,
+    totalItems,
+    totalPages,
+    currentPage
+  };
 };
 
 

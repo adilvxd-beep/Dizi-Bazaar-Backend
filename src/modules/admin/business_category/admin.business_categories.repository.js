@@ -1,6 +1,6 @@
 import pool from "../../../shared/db/postgres.js";
 
-export const findAllBusinessCategories = async (query) => {
+export const findAllBusinessCategories = async (query = {}) => {
   const {
     search,
     status,
@@ -10,66 +10,68 @@ export const findAllBusinessCategories = async (query) => {
     order = "desc",
   } = query;
 
-  const offset = (page - 1) * limit;
+  // Ensure numbers
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
 
-  // Allowed sortable columns (security)
+  // Allowed sortable columns (SQL injection protection)
   const allowedSortBy = ["id", "name", "created_at"];
   const sortColumn = allowedSortBy.includes(sortBy)
     ? sortBy
     : "created_at";
 
-  const sortOrder = order.toLowerCase() === "asc" ? "ASC" : "DESC";
+  const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
 
-  let conditions = [];
-  let values = [];
+  const conditions = [];
+  const values = [];
 
-  // Search
+  // Search filter
   if (search) {
     values.push(`%${search}%`);
     conditions.push(`name ILIKE $${values.length}`);
   }
 
-  // Filter
+  // Status filter
   if (status) {
     values.push(status);
     conditions.push(`status = $${values.length}`);
   }
 
   const whereClause =
-    conditions.length > 0
-      ? `WHERE ${conditions.join(" AND ")}`
-      : "";
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  // Final query
-  const sql = `
+  // Data query
+  const dataQuery = `
     SELECT *
     FROM business_categories
     ${whereClause}
     ORDER BY ${sortColumn} ${sortOrder}
     LIMIT $${values.length + 1}
-    OFFSET $${values.length + 2}
+    OFFSET $${values.length + 2};
   `;
 
-  values.push(limit, offset);
+  const dataValues = [...values, pageLimit, offset];
+  const { rows } = await pool.query(dataQuery, dataValues);
 
-  const result = await pool.query(sql, values);
+  // Count query
+  const countQuery = `
+    SELECT COUNT(*)::int AS count
+    FROM business_categories
+    ${whereClause};
+  `;
 
-  const length = `SELECT COUNT(*) FROM business_categories ${whereClause}`;
-  const countResult = await pool.query(length, values.slice(0, -2));
-  const totalItems = parseInt(countResult.rows[0].count, 10);
-
-  // You can return totalItems, totalPages, currentPage if needed
-  const totalPages = Math.ceil(totalItems / (query.limit || 10));
-  const currentPage = page;
+  const countResult = await pool.query(countQuery, values);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
 
   return {
-    items: result.rows,
+    items: rows,
     totalItems,
     totalPages,
-    currentPage
+    currentPage,
   };
 };
-
 
 export const createBusinessCategory = async (categoryData) => {
   const { name, status } = categoryData;

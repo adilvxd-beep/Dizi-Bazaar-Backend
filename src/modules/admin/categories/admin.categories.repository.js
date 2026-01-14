@@ -1,7 +1,7 @@
 import pool from "../../../shared/db/postgres.js";
 
 
-export const findAllCategories = async (query) => {
+export const findAllCategories = async (query = {}) => {
   const {
     search,
     status,
@@ -12,20 +12,23 @@ export const findAllCategories = async (query) => {
     order = "desc",
   } = query;
 
-  const offset = (page - 1) * limit;
+  // Ensure valid numbers
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
 
-  // Allowed sortable columns (security)
+  // Allowed sortable columns (SQL injection protection)
   const allowedSortBy = ["id", "name", "created_at", "status"];
   const sortColumn = allowedSortBy.includes(sortBy)
     ? `c.${sortBy}`
     : "c.created_at";
 
-  const sortOrder = order.toLowerCase() === "asc" ? "ASC" : "DESC";
+  const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
 
-  let conditions = [];
-  let values = [];
+  const conditions = [];
+  const values = [];
 
-  // 🔍 Search (category name OR business category name)
+  // Search (category name OR business category name)
   if (search) {
     values.push(`%${search}%`);
     conditions.push(
@@ -33,24 +36,23 @@ export const findAllCategories = async (query) => {
     );
   }
 
-  // 🎯 Filter by category status
+  //  Filter by category status
   if (status) {
     values.push(status);
     conditions.push(`c.status = $${values.length}`);
   }
 
-  // 🎯 Filter by business_category_id
+  // Filter by business category
   if (business_category_id) {
     values.push(Number(business_category_id));
     conditions.push(`c.business_category_id = $${values.length}`);
   }
 
   const whereClause =
-    conditions.length > 0
-      ? `WHERE ${conditions.join(" AND ")}`
-      : "";
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  const sql = `
+  // Data query
+  const dataQuery = `
     SELECT
       c.id,
       c.name,
@@ -58,8 +60,8 @@ export const findAllCategories = async (query) => {
       c.status,
       c.created_at,
       c.updated_at,
-      bc.id   AS business_category_id,
-      bc.name AS business_category_name,
+      bc.id     AS business_category_id,
+      bc.name   AS business_category_name,
       bc.status AS business_category_status
     FROM categories c
     JOIN business_categories bc
@@ -67,13 +69,31 @@ export const findAllCategories = async (query) => {
     ${whereClause}
     ORDER BY ${sortColumn} ${sortOrder}
     LIMIT $${values.length + 1}
-    OFFSET $${values.length + 2}
+    OFFSET $${values.length + 2};
   `;
 
-  values.push(limit, offset);
+  const dataValues = [...values, pageLimit, offset];
+  const { rows } = await pool.query(dataQuery, dataValues);
 
-  const result = await pool.query(sql, values);
-  return result.rows;
+  // Count query (same filters, no pagination)
+  const countQuery = `
+    SELECT COUNT(*)::int AS count
+    FROM categories c
+    JOIN business_categories bc
+      ON bc.id = c.business_category_id
+    ${whereClause};
+  `;
+
+  const countResult = await pool.query(countQuery, values);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
+
+  return {
+    items: rows,
+    totalItems,
+    totalPages,
+    currentPage,
+  };
 };
 
 

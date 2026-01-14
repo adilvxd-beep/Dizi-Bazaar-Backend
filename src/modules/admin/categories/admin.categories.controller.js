@@ -1,4 +1,4 @@
-import {getAllCategories, getCategoryById, createNewCategory, updateCategoryById, changeCategoryStatus, removeCategoryById} from "./admin.categories.service.js";
+import {getAllCategories, getCategoryById, createNewCategory, updateCategoryById, toggleCategoryStatusService, removeCategoryById} from "./admin.categories.service.js";
 import ApiError from "../../../shared/utils/ApiError.js";
 import ApiResponse from "../../../shared/utils/ApiResponse.js";
 
@@ -30,31 +30,37 @@ export const createCategory = async (req, res, next) => {
   }
 };
 
-export const updateCategory = async (req, res, next) => {
+export const updateCategoryController = async (req, res, next) => {
   try {
+    // console.log("REQ BODY:", req.body);
+    // console.log("REQ PARAMS:", req.params);
+
     const categoryId = Number(req.params.id);
     const updatedCategory = await updateCategoryById(categoryId, req.body);
+
     if (!updatedCategory) {
       return next(new ApiError(404, "Category not found"));
     }
+
     res.json(new ApiResponse(200, updatedCategory));
   } catch (error) {
     next(new ApiError(400, error.message));
-  }         
+  }
 };
+
 
 export const UpdateCategoryStatus = async (req, res, next) => {
   try {
-    const categoryId = Number(req.params.id);     
-    const { status } = req.body;
-    const updatedCategory = await changeCategoryStatus(categoryId, status);
-    if (!updatedCategory) {
-      return next(new ApiError(404, "Category not found"));
-    }
-    res.json(new ApiResponse(200, updatedCategory));
+    const category = await toggleCategoryStatusService(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Category status updated successfully",
+      data: category
+    });
   } catch (error) {
-    next(new ApiError(400, error.message));
-  }         
+    next(error);
+  }
 };
 
 export const deleteCategory = async (req, res, next) => {

@@ -128,37 +128,68 @@ export const createCategory = async (categoryData) => {
     return result.rows[0];
 };
 
-export const updateCategory = async (categoryId, updateData) => {
-    const fields = [];
-    const values = [];
-    let index = 1;
+/**
+ * Check business category existence + status
+ */
+export const getBusinessCategoryStatusRepo = async (businessCategoryId) => {
+  const result = await pool.query(
+    "SELECT status FROM business_categories WHERE id = $1",
+    [businessCategoryId]
+  );
 
-    for (const key in updateData) {
-        fields.push(`${key} = $${index}`);
-        values.push(updateData[key]);
-        index++;
-    }
-
-    values.push(categoryId);
-
-    const sql = `
-        UPDATE categories
-        SET ${fields.join(", ")}
-        WHERE id = $${index}
-        RETURNING *
-    `;
-
-    const result = await pool.query(sql, values);
-    return result.rows[0];
-};      
-
-export const updateCategoryStatus = async (categoryId, status) => {
-    const result = await pool.query(
-        "UPDATE categories SET status = $1 WHERE id = $2 RETURNING *",
-        [status, categoryId]
-    );
-    return result.rows[0];
+  return result.rows[0] || null;
 };
+
+/**
+ * Update category fields
+ */
+export const updateCategoryRepo = async (categoryId, updateData) => {
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  for (const key in updateData) {
+    fields.push(`${key} = $${index}`);
+    values.push(updateData[key]);
+    index++;
+  }
+
+  values.push(categoryId);
+
+  const sql = `
+    UPDATE categories
+    SET ${fields.join(", ")},
+        updated_at = NOW()
+    WHERE id = $${index}
+    RETURNING *
+  `;
+
+  const result = await pool.query(sql, values);
+  return result.rows[0];
+};  
+
+export const toggleCategoryStatusRepo = async (categoryId, client = null) => {
+  const db = client ?? pool;
+
+  const result = await db.query(
+    `
+    UPDATE categories
+    SET status = (
+      CASE
+        WHEN status = 'active' THEN 'inactive'
+        ELSE 'active'
+      END
+    )::status,
+    updated_at = NOW()
+    WHERE id = $1
+    RETURNING id, status
+    `,
+    [categoryId]
+  );
+
+  return result;
+};
+
 
 export const deleteCategoryById = async (categoryId) => {
     const result = await pool.query(

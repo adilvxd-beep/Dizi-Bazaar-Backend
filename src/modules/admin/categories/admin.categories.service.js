@@ -1,4 +1,6 @@
-import { findAllCategories, findCategoryById, createCategory, updateCategory, updateCategoryStatus, deleteCategoryById } from "./admin.categories.repository.js";
+import { findAllCategories, findCategoryById, createCategory, getBusinessCategoryStatusRepo , updateCategoryRepo, toggleCategoryStatusRepo,  deleteCategoryById } from "./admin.categories.repository.js";
+
+import pool from "../../../shared/db/postgres.js";
 
 function formatName(name) {
   if (!name) return name;
@@ -17,7 +19,7 @@ export const getCategoryById = async (categoryId) => {
   }
 
   return category;
-};
+}
 
 export const getAllCategories = async (query) => {
   return await findAllCategories(query);
@@ -47,40 +49,42 @@ export const updateCategoryById = async (categoryId, updateData) => {
     throw new Error("No data provided to update");
   }
 
+  // format name
   if (updateData.name) {
     updateData.name = formatName(updateData.name);
   }
 
-  // 🔐 Business rule: validate business category change
+  // Business rule: validate business category change
   if (updateData.business_category_id) {
-    const result = await pool.query(
-      "SELECT status FROM business_categories WHERE id = $1",
-      [updateData.business_category_id]
-    );
+    const businessCategory =
+      await getBusinessCategoryStatusRepo(updateData.business_category_id);
 
-    if (result.rowCount === 0) {
+    if (!businessCategory) {
       throw new Error("Business category does not exist");
     }
 
-    if (result.rows[0].status !== "active") {
+    if (businessCategory.status !== "active") {
       throw new Error("Cannot assign category to inactive business category");
     }
   }
 
-  return await updateCategory(categoryId, updateData);
-};
+  const updatedCategory = await updateCategoryRepo(categoryId, updateData);
 
-export const changeCategoryStatus = async (categoryId, status) => {
-  if (!categoryId) {
-    throw new Error("Category id is required");
+  if (!updatedCategory) {
+    throw new Error("Category not found");
   }
 
-  if (!status || (status !== "active" && status !== "inactive")) {
-    throw new Error("Invalid status value");
-  }
-
-  return await updateCategoryStatus(categoryId, status);
+  return updatedCategory;
 };
+
+export const toggleCategoryStatusService = async (categoryId) => {
+  const result = await toggleCategoryStatusRepo(categoryId);
+  if (result.rowCount === 0) {
+    throw new Error("Category not found");
+  }
+  return result.rows[0];    
+};
+
 
 export const removeCategoryById = async (categoryId) => {
   return await deleteCategoryById(categoryId);

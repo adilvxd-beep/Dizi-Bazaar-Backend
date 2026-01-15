@@ -16,7 +16,7 @@ router.post("/", authenticate, authorize(ROLES.ADMIN), validate(createCategorySc
 
 router.patch("/:id", authenticate, authorize(ROLES.ADMIN), validate(updateCategorySchema), updateCategoryController);
 
-router.patch("/:id/status", authenticate, authorize(ROLES.ADMIN), UpdateCategoryStatus);
+router.patch("/:id/status", authenticate, UpdateCategoryStatus);
 
 
 router.delete("/:id", authenticate, authorize(ROLES.ADMIN), deleteCategory);

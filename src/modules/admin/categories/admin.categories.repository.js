@@ -100,11 +100,12 @@ export const findAllCategories = async (query = {}) => {
 
   // Count query (same filters, no pagination)
   const countQuery = `
-    SELECT COUNT(*)::int AS countgetAllBusinessCategoryById
-    FROM categories c
-    JOIN business_categories bc
-      ON bc.id = c.business_category_id
-    ${whereClause};
+    SELECT COUNT(*)::int AS count
+FROM categories c
+JOIN business_categories bc
+  ON bc.id = c.business_category_id
+${whereClause};
+
   `;
 
   const countResult = await pool.query(countQuery, values);

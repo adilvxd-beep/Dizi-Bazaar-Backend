@@ -1,6 +1,5 @@
 import { findAllCategories, findCategoryById, createCategory, getBusinessCategoryStatusRepo , updateCategoryRepo, toggleCategoryStatusRepo,  deleteCategoryById } from "./admin.categories.repository.js";
 
-import pool from "../../../shared/db/postgres.js";
 
 function formatName(name) {
   if (!name) return name;

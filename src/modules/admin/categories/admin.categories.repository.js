@@ -168,10 +168,9 @@ export const updateCategoryRepo = async (categoryId, updateData) => {
   return result.rows[0];
 };  
 
-export const toggleCategoryStatusRepo = async (categoryId, client = null) => {
-  const db = client ?? pool;
+export const toggleCategoryStatusRepo = async (categoryId) => {
 
-  const result = await db.query(
+  const result = await pool.query(
     `
     UPDATE categories
     SET status = (

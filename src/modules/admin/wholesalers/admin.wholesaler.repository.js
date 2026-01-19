@@ -1,43 +1,45 @@
 import pool from "../../../shared/db/postgres.js";
 
-export const createWholesaler = async (data, user) => {
+export const createWholesalerBasic = async (data, adminUser) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    const {
-      businessName,
-      businessCategoryId,
-      ownerName,
-      phoneNumber,
-      alternatePhoneNumber,
-      email,
-      websiteUrl,
-      businessAddress,
-      billingAddress,
-      gstNumber,
-      panNumber,
-      aadharNumber,
-      msmeNumber,
-      yearsInBusiness,
-      numberOfEmployees,
-      annualTurnover,
-      tradeLicenseNumber
-    } = data;
+    const { user, wholesaler } = data;
+    const { id: adminId, role: adminRole } = adminUser;
 
-    const { id: userId, role } = user;
+    /* =========================
+       CREATE USER
+    ========================= */
+    const userRes = await client.query(
+      `
+      INSERT INTO users (username, email, phone, role)
+      VALUES ($1, $2, $3, 'wholesaler')
+      RETURNING id
+      `,
+      [
+        user.username,
+        user.email.toLowerCase(),
+        user.phone
+      ]
+    );
 
-    // 1️⃣ Insert wholesaler (STEP 1)
-    const { rows } = await client.query(
+    const userId = userRes.rows[0].id;
+
+    /* =========================
+       CREATE WHOLESALER
+    ========================= */
+    const wholesalerRes = await client.query(
       `
       INSERT INTO wholesalers (
+        user_id,
         business_name,
         business_category_id,
         owner_name,
         phone_number,
-        alternate_phone_number,
         email,
+        alternate_phone_number,
         website_url,
         business_address,
         billing_address,
@@ -53,49 +55,43 @@ export const createWholesaler = async (data, user) => {
         created_by_role
       )
       VALUES (
-        $1,$2,$3,$4,$5,
-        $6,$7,$8,$9,$10,
-        $11,$12,$13,$14,$15,
-        $16,$17,$18,$19
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,
+        $19,$20
       )
-      RETURNING id, status, created_at
+      RETURNING id, status
       `,
       [
-        businessName?.trim(),
-        businessCategoryId,
-        ownerName?.trim(),
-        phoneNumber,
-        alternatePhoneNumber,
-        email?.toLowerCase(),
-        websiteUrl,
-        businessAddress,
-        billingAddress,
-        gstNumber,
-        panNumber,
-        aadharNumber,
-        msmeNumber,
-        yearsInBusiness,
-        numberOfEmployees,
-        annualTurnover,
-        tradeLicenseNumber,
         userId,
-        role
+        wholesaler.businessName,
+        wholesaler.businessCategoryId,
+        wholesaler.ownerName,
+        user.phone,
+        user.email,
+        wholesaler.alternatePhoneNumber,
+        wholesaler.websiteUrl,
+        wholesaler.businessAddress,
+        wholesaler.billingAddress,
+        wholesaler.gstNumber,
+        wholesaler.panNumber,
+        wholesaler.aadharNumber,
+        wholesaler.msmeNumber,
+        wholesaler.yearsInBusiness,
+        wholesaler.numberOfEmployees,
+        wholesaler.annualTurnover,
+        wholesaler.tradeLicenseNumber,
+        adminId,
+        adminRole
       ]
     );
 
-    const wholesalerId = rows[0].id;
-
-    // 2️⃣ Create empty document row (all statuses = pending)
-    await client.query(
-      `
-      INSERT INTO wholesaler_documents (wholesaler_id)
-      VALUES ($1)
-      `,
-      [wholesalerId]
-    );
-
     await client.query("COMMIT");
-    return rows[0];
+
+    return {
+      userId,
+      wholesalerId: wholesalerRes.rows[0].id,
+      status: wholesalerRes.rows[0].status // pending
+    };
 
   } catch (error) {
     await client.query("ROLLBACK");
@@ -105,53 +101,296 @@ export const createWholesaler = async (data, user) => {
   }
 };
 
-export const updateWholesalerDocuments = async (
+export const createWholesalerDocuments = async (
+  wholesalerId,
+  documents
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    /* =========================
+       GET USER ID FROM WHOLESALER
+    ========================= */
+    const res = await client.query(
+      `
+      SELECT user_id
+      FROM wholesalers
+      WHERE id = $1
+      `,
+      [wholesalerId]
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    const userId = res.rows[0].user_id;
+
+    /* =========================
+       CREATE DOCUMENTS
+       status defaults to pending
+    ========================= */
+    await client.query(
+      `
+      INSERT INTO wholesaler_documents (
+        wholesaler_id,
+        user_id,
+        gst_certificate_url,
+        pan_card_url,
+        aadhar_card_url,
+        bank_statement_url,
+        business_proof_url,
+        cancelled_cheque_url
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      `,
+      [
+        wholesalerId,
+        userId,
+        documents.gstCertificateUrl,
+        documents.panCardUrl,
+        documents.aadharCardUrl,
+        documents.bankStatementUrl,
+        documents.businessProofUrl,
+        documents.cancelledChequeUrl
+      ]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      documentsCreated: true
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const updateWholesalerStatus = async (wholesalerId, status) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const wholesalerRes = await client.query(
+
+      `UPDATE wholesalers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, user_id, status`,
+      [status, wholesalerId]
+    );
+
+    if (wholesalerRes.rowCount === 0) {
+      throw new Error("Wholesaler not found");
+    }
+
+    const { user_id, status: newStatus} = wholesalerRes.rows[0];
+
+    const isVerified = newStatus === "verified";
+
+    await client.query (
+
+      `UPDATE users SET is_verified = $1, updated_at = NOW() WHERE id = $2`,
+      [isVerified, user_id]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      status: newStatus,
+      userVerified: isVerified
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error
+  }
+};
+
+export const updateWholesalerDocumentStatus = async (
   wholesalerId,
   updates
 ) => {
-  // ✅ Whitelist allowed columns
-  const allowedFields = [
-    "gst_certificate_url",
-    "gst_certificate_status",
-    "pan_card_url",
-    "pan_card_status",
-    "aadhar_card_url",
-    "aadhar_card_status",
-    "bank_statement_url",
-    "bank_statement_status",
-    "business_proof_url",
-    "business_proof_status",
-    "cancelled_cheque_url",
-    "cancelled_cheque_status"
-  ];
+  const client = await pool.connect();
 
-  const fields = [];
-  const values = [];
-  let index = 1;
+  try {
+    await client.query("BEGIN");
 
-  for (const key of Object.keys(updates)) {
-    if (allowedFields.includes(key)) {
+    /* =========================
+       CHECK DOCUMENT RECORD EXISTS
+    ========================= */
+    const docCheck = await client.query(
+      `SELECT id FROM wholesaler_documents WHERE wholesaler_id = $1`,
+      [wholesalerId]
+    );
+
+    if (docCheck.rowCount === 0) {
+      throw new Error("DOCUMENTS_NOT_FOUND");
+    }
+
+    /* =========================
+       BUILD DYNAMIC UPDATE QUERY
+    ========================= */
+    const fields = [];
+    const values = [];
+    let index = 1;
+
+    for (const key in updates) {
       fields.push(`${key} = $${index}`);
       values.push(updates[key]);
       index++;
     }
+
+    values.push(wholesalerId);
+
+    await client.query(
+      `
+      UPDATE wholesaler_documents
+      SET ${fields.join(", ")},
+          updated_at = NOW()
+      WHERE wholesaler_id = $${index}
+      `,
+      values
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      updatedFields: Object.keys(updates)
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
+};
 
-  // ❌ No valid fields → block query
-  if (!fields.length) {
-    throw new Error("No valid document fields provided");
+
+export const updateWholesalerAndDocuments = async (
+  wholesalerId,
+  updateData,
+  adminUser
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    /* =========================
+        UPDATE WHOLESALER
+    ========================= */
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (updateData.status) {
+      fields.push(`status = $${idx++}`);
+      values.push(updateData.status);
+    }
+
+    if (updateData.initialCreditLimit !== undefined) {
+      fields.push(`initial_credit_limit = $${idx++}`);
+      values.push(updateData.initialCreditLimit);
+    }
+
+    if (updateData.adminNote) {
+      fields.push(`admin_note = $${idx++}`);
+      values.push(updateData.adminNote);
+    }
+
+    fields.push(`verified_by_id = $${idx++}`);
+    values.push(adminUser.id);
+
+    fields.push(`verified_by_role = $${idx++}`);
+    values.push(adminUser.role);
+
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    values.push(wholesalerId);
+
+    const wholesalerRes = await client.query(
+      `
+      UPDATE wholesalers
+      SET ${fields.join(", ")}
+      WHERE id = $${idx}
+      RETURNING id, status, user_id
+      `,
+      values
+    );
+
+    if (wholesalerRes.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    const { status: newStatus, user_id } = wholesalerRes.rows[0];
+
+    /* =========================
+       SYNC USER (ENUM DRIVEN)
+    ========================= */
+    await client.query(
+      `
+      UPDATE users
+      SET is_verified = $1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      `,
+      [newStatus === "verified", user_id]
+    );
+
+    /* =================================================
+       🔑 ENSURE DOCUMENT ROW EXISTS (CRITICAL FIX)
+    ================================================= */
+    await client.query(
+      `
+      INSERT INTO wholesaler_documents (wholesaler_id, user_id)
+      VALUES ($1, $2)
+      ON CONFLICT (wholesaler_id) DO NOTHING
+      `,
+      [wholesalerId, user_id]
+    );
+
+    /* =========================
+       SYNC DOCUMENT STATUSES
+       (ENUM → NO HARDCODING)
+    ========================= */
+await client.query(
+  `
+  UPDATE wholesaler_documents
+  SET
+    gst_certificate_status = $1::wholesaler_status,
+    pan_card_status = $1::wholesaler_status,
+    aadhar_card_status = $1::wholesaler_status,
+    bank_statement_status = $1::wholesaler_status,
+    business_proof_status = $1::wholesaler_status,
+    cancelled_cheque_status = $1::wholesaler_status,
+    updated_at = CURRENT_TIMESTAMP
+  WHERE wholesaler_id = $2
+  `,
+  [newStatus, wholesalerId]
+);
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      status: newStatus,
+      userVerified: newStatus === "verified",
+      documentsStatus: newStatus
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  values.push(wholesalerId);
-
-  const query = `
-    UPDATE wholesaler_documents
-    SET ${fields.join(", ")},
-        updated_at = CURRENT_TIMESTAMP
-    WHERE wholesaler_id = $${index}
-    RETURNING *
-  `;
-
-  const { rows } = await pool.query(query, values);
-  return rows[0];
 };

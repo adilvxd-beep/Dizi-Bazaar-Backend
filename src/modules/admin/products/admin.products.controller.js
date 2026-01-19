@@ -23,6 +23,9 @@ import {
   searchAllProducts,
   getProductsWithPriceStats,
   getProductsByCategory,
+  createFullProductWithVariantsAndPricing,
+  updateFullProductWithVariantsAndPricing,
+  deleteFullProductById,
 } from "./admin.products.service.js";
 
 import ApiError from "../../../shared/utils/ApiError.js";
@@ -226,6 +229,81 @@ export const deleteVariantPricing = async (req, res, next) => {
     await deleteVariantPricingById(req.params.variantId, req.user.id);
 
     res.json(new ApiResponse(200, { message: "Pricing deleted successfully" }));
+  } catch (error) {
+    next(new ApiError(400, error.message));
+  }
+};
+
+/* ==================== FULL PRODUCT CREATION CONTROLLER ==================== */
+
+export const createFullProduct = async (req, res, next) => {
+  try {
+    // All form-data fields are expected to be parsed already
+    // product, variants, and pricing come from body
+    const { product, variants, pricing } = req.body;
+
+    // userId comes from auth middleware
+    const userId = req.user.id;
+
+    // location is currently passed statically (later replace with geo resolver)
+    const location = {
+      state: "Uttar Pradesh",
+      city: "Noida",
+    };
+
+    const result = await createFullProductWithVariantsAndPricing(
+      product,
+      variants,
+      pricing,
+      userId,
+      location
+    );
+
+    res.status(201).json(new ApiResponse(201, result));
+  } catch (error) {
+    next(new ApiError(400, error.message));
+  }
+};
+
+/* ==================== FULL PRODUCT UPDATE CONTROLLER ==================== */
+
+export const updateFullProduct = async (req, res, next) => {
+  try {
+    const { product, variants, pricing } = req.body;
+
+    const userId = req.user.id;
+    const productId = req.params.id;
+
+    // location is currently passed statically (later replace with geo resolver)
+    const location = {
+      state: "Uttar Pradesh",
+      city: "Noida",
+    };
+
+    const result = await updateFullProductWithVariantsAndPricing(
+      productId,
+      product,
+      variants,
+      pricing,
+      userId,
+      location
+    );
+
+    res.status(200).json(new ApiResponse(200, result));
+  } catch (error) {
+    next(new ApiError(400, error.message));
+  }
+};
+
+/* ==================== FULL PRODUCT DELETE CONTROLLER ==================== */
+
+export const deleteFullProduct = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+
+    const result = await deleteFullProductById(productId);
+
+    res.json(new ApiResponse(200, result));
   } catch (error) {
     next(new ApiError(400, error.message));
   }

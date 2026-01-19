@@ -23,6 +23,9 @@ import {
   searchProducts,
   findProductsWithPriceStats,
   findProductsByCategory,
+  createProductWithVariantsAndSinglePrice,
+  updateProductWithVariantsAndSinglePrice,
+  deleteProductFull,
 } from "./admin.products.repository.js";
 
 // ==================== HELPER FUNCTIONS ====================
@@ -420,6 +423,233 @@ export const deleteVariantPricingById = async (variantId, userId) => {
   }
 
   return await deleteVariantPricing(Number(variantId), Number(userId));
+};
+
+export const createFullProductWithVariantsAndPricing = async (
+  productData,
+  variants,
+  pricingData,
+  userId,
+  location
+) => {
+  // Basic validations
+  validateProductData(productData);
+
+  if (!variants || !Array.isArray(variants) || variants.length === 0) {
+    throw new Error("Variants array is required");
+  }
+
+  if (!pricingData) {
+    throw new Error("Pricing data is required");
+  }
+
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  if (!location || !location.state || !location.city) {
+    throw new Error("Valid location (state, city) is required");
+  }
+
+  // Format product fields
+  productData.product_name = formatName(productData.product_name);
+
+  if (productData.description) {
+    productData.description = productData.description.trim();
+  }
+
+  if (productData.status) {
+    productData.status = productData.status.trim().toLowerCase();
+  }
+
+  // Format variants
+  variants.forEach((variant, index) => {
+    if (!variant.variant_name || !variant.sku) {
+      throw new Error(
+        `Variant at index ${index} must have variant_name and sku`
+      );
+    }
+
+    variant.variant_name = formatName(variant.variant_name);
+    variant.sku = formatSKU(variant.sku);
+
+    if (variant.attribute_value_1) {
+      variant.attribute_value_1 = variant.attribute_value_1.trim();
+    }
+    if (variant.attribute_value_2) {
+      variant.attribute_value_2 = variant.attribute_value_2.trim();
+    }
+    if (variant.attribute_value_3) {
+      variant.attribute_value_3 = variant.attribute_value_3.trim();
+    }
+
+    if (variant.images) {
+      variant.images.forEach((img, imgIndex) => {
+        if (!img.image_url || !img.image_url.trim()) {
+          throw new Error(
+            `Image URL is required for variant ${index}, image ${imgIndex}`
+          );
+        }
+        img.image_url = img.image_url.trim();
+      });
+    }
+  });
+
+  // Format pricing
+  if (
+    pricingData.cost_price === undefined ||
+    pricingData.selling_price === undefined
+  ) {
+    throw new Error("Cost price and selling price are required");
+  }
+
+  pricingData.cost_price = parseFloat(pricingData.cost_price);
+  pricingData.selling_price = parseFloat(pricingData.selling_price);
+
+  if (pricingData.tax_percentage !== undefined) {
+    pricingData.tax_percentage = parseFloat(pricingData.tax_percentage);
+  }
+
+  if (isNaN(pricingData.cost_price) || isNaN(pricingData.selling_price)) {
+    throw new Error("Invalid pricing numbers");
+  }
+
+  // Call repository transactional function
+  return await createProductWithVariantsAndSinglePrice(
+    productData,
+    variants,
+    pricingData,
+    Number(userId),
+    {
+      state: location.state.trim(),
+      city: location.city.trim(),
+    }
+  );
+};
+
+// ==================== FULL PRODUCT UPDATE SERVICE ====================
+
+export const updateFullProductWithVariantsAndPricing = async (
+  productId,
+  productData,
+  variants,
+  pricingData,
+  userId,
+  location
+) => {
+  if (!productId) {
+    throw new Error("Product ID is required");
+  }
+
+  // Ensure product exists
+  await getProductById(productId);
+
+  // Reuse same validations as create
+  validateProductData(productData);
+
+  if (!variants || !Array.isArray(variants) || variants.length === 0) {
+    throw new Error("Variants array is required");
+  }
+
+  if (!pricingData) {
+    throw new Error("Pricing data is required");
+  }
+
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  if (!location || !location.state || !location.city) {
+    throw new Error("Valid location (state, city) is required");
+  }
+
+  // Format product fields
+  productData.product_name = formatName(productData.product_name);
+
+  if (productData.description) {
+    productData.description = productData.description.trim();
+  }
+
+  if (productData.status) {
+    productData.status = productData.status.trim().toLowerCase();
+  }
+
+  // Format variants
+  variants.forEach((variant, index) => {
+    if (!variant.variant_name || !variant.sku) {
+      throw new Error(
+        `Variant at index ${index} must have variant_name and sku`
+      );
+    }
+
+    variant.variant_name = formatName(variant.variant_name);
+    variant.sku = formatSKU(variant.sku);
+
+    if (variant.attribute_value_1) {
+      variant.attribute_value_1 = variant.attribute_value_1.trim();
+    }
+    if (variant.attribute_value_2) {
+      variant.attribute_value_2 = variant.attribute_value_2.trim();
+    }
+    if (variant.attribute_value_3) {
+      variant.attribute_value_3 = variant.attribute_value_3.trim();
+    }
+
+    if (variant.images) {
+      variant.images.forEach((img, imgIndex) => {
+        if (!img.image_url || !img.image_url.trim()) {
+          throw new Error(
+            `Image URL is required for variant ${index}, image ${imgIndex}`
+          );
+        }
+        img.image_url = img.image_url.trim();
+      });
+    }
+  });
+
+  // Format pricing
+  if (
+    pricingData.cost_price === undefined ||
+    pricingData.selling_price === undefined
+  ) {
+    throw new Error("Cost price and selling price are required");
+  }
+
+  pricingData.cost_price = parseFloat(pricingData.cost_price);
+  pricingData.selling_price = parseFloat(pricingData.selling_price);
+
+  if (pricingData.tax_percentage !== undefined) {
+    pricingData.tax_percentage = parseFloat(pricingData.tax_percentage);
+  }
+
+  if (isNaN(pricingData.cost_price) || isNaN(pricingData.selling_price)) {
+    throw new Error("Invalid pricing numbers");
+  }
+
+  return await updateProductWithVariantsAndSinglePrice(
+    Number(productId),
+    productData,
+    variants,
+    pricingData,
+    Number(userId),
+    {
+      state: location.state.trim(),
+      city: location.city.trim(),
+    }
+  );
+};
+
+// ==================== FULL PRODUCT DELETE SERVICE ====================
+
+export const deleteFullProductById = async (productId) => {
+  if (!productId) {
+    throw new Error("Product ID is required");
+  }
+
+  // Ensure product exists
+  await getProductById(productId);
+
+  return await deleteProductFull(Number(productId));
 };
 
 // ==================== COMPLEX QUERY SERVICES ====================

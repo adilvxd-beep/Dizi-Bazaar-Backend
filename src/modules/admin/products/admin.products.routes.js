@@ -4,6 +4,7 @@ import {
   getProducts,
   getProductByIdController,
   createProduct,
+  createFullProduct,
   updateProduct,
   deleteProduct,
   getVariantByIdController,
@@ -25,6 +26,8 @@ import {
   searchProducts,
   getProductsPriceStats,
   getProductsByCategoryController,
+  updateFullProduct,
+  deleteFullProduct,
 } from "./admin.products.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -78,6 +81,22 @@ router.post(
   authorize(ROLES.ADMIN),
   validate(createProductSchema),
   createProduct
+);
+
+router.post("/full", authenticate, authorize(ROLES.ADMIN), createFullProduct);
+
+router.patch(
+  "/full/:id",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  updateFullProduct
+);
+
+router.delete(
+  "/full/:id",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  deleteFullProduct
 );
 
 router.patch(

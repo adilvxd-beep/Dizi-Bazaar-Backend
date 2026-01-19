@@ -492,6 +492,311 @@ export const deleteVariantPricing = async (variantId, userId) => {
   );
 };
 
+// ========================================================================
+// Create Product with Variants and Single Price (Transactional Helper)
+// ========================================================================
+export const createProductWithVariantsAndSinglePrice = async (
+  productData,
+  variants,
+  pricingData,
+  userId,
+  location
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Insert Product
+    const productResult = await client.query(
+      `
+      INSERT INTO products 
+      (product_name, business_category_id, category_id, description, main_image, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+      `,
+      [
+        productData.product_name,
+        productData.business_category_id,
+        productData.category_id,
+        productData.description,
+        productData.main_image,
+        productData.status || "active",
+      ]
+    );
+
+    const product = productResult.rows[0];
+
+    // 2. Insert Variants
+    const createdVariants = [];
+
+    for (const variant of variants) {
+      const variantResult = await client.query(
+        `
+        INSERT INTO product_variants 
+        (product_id, variant_name, attribute_name_1, attribute_value_1,
+         attribute_name_2, attribute_value_2, attribute_name_3, attribute_value_3, sku)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        RETURNING *
+        `,
+        [
+          product.id,
+          variant.variant_name,
+          variant.attribute_name_1,
+          variant.attribute_value_1,
+          variant.attribute_name_2,
+          variant.attribute_value_2,
+          variant.attribute_name_3,
+          variant.attribute_value_3,
+          variant.sku,
+        ]
+      );
+
+      const createdVariant = variantResult.rows[0];
+
+      // 3. Insert Variant Images
+      if (variant.images && variant.images.length > 0) {
+        const imgValues = [];
+        const imgPlaceholders = [];
+
+        variant.images.forEach((img, index) => {
+          const offset = index * 3;
+          imgPlaceholders.push(
+            `($${offset + 1}, $${offset + 2}, $${offset + 3})`
+          );
+          imgValues.push(
+            createdVariant.id,
+            img.image_url,
+            img.display_order || index
+          );
+        });
+
+        await client.query(
+          `
+          INSERT INTO variant_images (variant_id, image_url, display_order)
+          VALUES ${imgPlaceholders.join(", ")}
+          `,
+          imgValues
+        );
+      }
+
+      // 4. Insert Single Pricing for each Variant
+      await client.query(
+        `
+        INSERT INTO variant_pricing
+        (variant_id, user_id, cost_price, selling_price, tax_percentage, state, city)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [
+          createdVariant.id,
+          userId,
+          pricingData.cost_price,
+          pricingData.selling_price,
+          pricingData.tax_percentage || 0,
+          location.state,
+          location.city,
+        ]
+      );
+
+      createdVariants.push(createdVariant);
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      product,
+      variants: createdVariants,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// ========================================================================
+// Update Product with Variants and Single Price (Transactional Helper)
+// ========================================================================
+export const updateProductWithVariantsAndSinglePrice = async (
+  productId,
+  productData,
+  variants,
+  pricingData,
+  userId,
+  location
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Update Product
+    await client.query(
+      `
+      UPDATE products
+      SET product_name = $1,
+          business_category_id = $2,
+          category_id = $3,
+          description = $4,
+          main_image = $5,
+          status = $6,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+      `,
+      [
+        productData.product_name,
+        productData.business_category_id,
+        productData.category_id,
+        productData.description,
+        productData.main_image,
+        productData.status || "active",
+        productId,
+      ]
+    );
+
+    // 2. Delete old variants (cascade will delete images & pricing if FK is set)
+    await client.query(`DELETE FROM product_variants WHERE product_id = $1`, [
+      productId,
+    ]);
+
+    // 3. Re-insert variants + images + pricing
+    const createdVariants = [];
+
+    for (const variant of variants) {
+      const variantResult = await client.query(
+        `
+        INSERT INTO product_variants 
+        (product_id, variant_name, attribute_name_1, attribute_value_1,
+         attribute_name_2, attribute_value_2, attribute_name_3, attribute_value_3, sku)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        RETURNING *
+        `,
+        [
+          productId,
+          variant.variant_name,
+          variant.attribute_name_1,
+          variant.attribute_value_1,
+          variant.attribute_name_2,
+          variant.attribute_value_2,
+          variant.attribute_name_3,
+          variant.attribute_value_3,
+          variant.sku,
+        ]
+      );
+
+      const createdVariant = variantResult.rows[0];
+
+      // Insert Variant Images
+      if (variant.images && variant.images.length > 0) {
+        const imgValues = [];
+        const imgPlaceholders = [];
+
+        variant.images.forEach((img, index) => {
+          const offset = index * 3;
+          imgPlaceholders.push(
+            `($${offset + 1}, $${offset + 2}, $${offset + 3})`
+          );
+          imgValues.push(
+            createdVariant.id,
+            img.image_url,
+            img.display_order || index
+          );
+        });
+
+        await client.query(
+          `
+          INSERT INTO variant_images (variant_id, image_url, display_order)
+          VALUES ${imgPlaceholders.join(", ")}
+          `,
+          imgValues
+        );
+      }
+
+      // Insert Pricing
+      await client.query(
+        `
+        INSERT INTO variant_pricing
+        (variant_id, user_id, cost_price, selling_price, tax_percentage, state, city)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [
+          createdVariant.id,
+          userId,
+          pricingData.cost_price,
+          pricingData.selling_price,
+          pricingData.tax_percentage || 0,
+          location.state,
+          location.city,
+        ]
+      );
+
+      createdVariants.push(createdVariant);
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      productId,
+      variants: createdVariants,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// ========================================================================
+// Delete Product with Variants, Images, and Pricing (Transactional Helper)
+// ========================================================================
+export const deleteProductFull = async (productId) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Delete pricing linked to variants
+    await client.query(
+      `
+      DELETE FROM variant_pricing
+      WHERE variant_id IN (
+        SELECT id FROM product_variants WHERE product_id = $1
+      )
+      `,
+      [productId]
+    );
+
+    // Delete variant images
+    await client.query(
+      `
+      DELETE FROM variant_images
+      WHERE variant_id IN (
+        SELECT id FROM product_variants WHERE product_id = $1
+      )
+      `,
+      [productId]
+    );
+
+    // Delete variants
+    await client.query(`DELETE FROM product_variants WHERE product_id = $1`, [
+      productId,
+    ]);
+
+    // Delete product
+    await client.query(`DELETE FROM products WHERE id = $1`, [productId]);
+
+    await client.query("COMMIT");
+    return { deleted: true, productId };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 // ==================== COMPLEX QUERIES ====================
 
 export const findCompleteProduct = async (productId, userId = null) => {

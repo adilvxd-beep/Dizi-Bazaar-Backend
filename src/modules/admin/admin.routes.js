@@ -4,6 +4,7 @@ import categoryRoutes from "./categories/admin.categories.routes.js";
 import orderRoutes from "./order/admin.order.routes.js";
 import userRoutes from "./user/admin.user.routes.js";
 import wholesaler from "./wholesalers/admin.wholesaler.routes.js";
+import productsRoute from "./products/admin.products.routes.js";
 
 const router = express.Router();
 
@@ -12,5 +13,6 @@ router.use("/users", userRoutes);
 router.use("/business-categories", businessCategoryRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/wholesalers", wholesaler);
+router.use("/products", productsRoute);
 
 export default router;

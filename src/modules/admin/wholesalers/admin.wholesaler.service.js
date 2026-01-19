@@ -1,53 +1,164 @@
 import {
-  createWholesaler,
-  updateWholesalerDocuments
+  createWholesalerBasic,
+  createWholesalerDocuments,
+  updateWholesalerStatus,
+  updateWholesalerDocumentStatus,
+  updateWholesalerAndDocuments,
 } from "./admin.wholesaler.repository.js";
 
-export const createWholesalerService = async (data, user) => {
+
+//CREATE WHOLESALER BASIC (USER + BUSINESS)
+export const createWholesalerBasicService = async (data, adminUser) => {
   try {
-    return await createWholesaler(data, user);
+    return await createWholesalerBasic(data, adminUser);
   } catch (error) {
-    // postgres unique violation
+
     if (error.code === "23505") {
       const err = new Error("DUPLICATE_WHOLESALER");
       err.code = "DUPLICATE_WHOLESALER";
+      err.statusCode = 409;
       throw err;
     }
 
-    throw error; // let controller / global handler decide
-  }
-};
-
-export const updateWholesalerDocumentsService = async (
-  wholesalerId,
-  updates
-) => {
-  if (!wholesalerId) {
-    const err = new Error("WHOLESALER_ID_REQUIRED");
-    err.code = "WHOLESALER_ID_REQUIRED";
-    throw err;
-  }
-
-  if (!updates || Object.keys(updates).length === 0) {
-    const err = new Error("NO_DOCUMENT_UPDATES");
-    err.code = "NO_DOCUMENT_UPDATES";
-    throw err;
-  }
-
-  try {
-    const documents = await updateWholesalerDocuments(
-      wholesalerId,
-      updates
-    );
-
-    if (!documents) {
-      const err = new Error("DOCUMENTS_NOT_FOUND");
-      err.code = "DOCUMENTS_NOT_FOUND";
+    if (error.code === "23503") {
+      const err = new Error("INVALID_REFERENCE");
+      err.code = "INVALID_REFERENCE";
+      err.statusCode = 400;
       throw err;
     }
 
-    return documents;
-  } catch (error) {
+    if (error.code === "23502") {
+      const err = new Error("MISSING_REQUIRED_FIELD");
+      err.code = "MISSING_REQUIRED_FIELD";
+      err.statusCode = 400;
+      throw err;
+    }
+
     throw error;
   }
 };
+
+//CREATE WHOLESALER DOCUMENTS
+export const createWholesalerDocumentsService = async (
+  wholesalerId,
+  documents
+) => {
+  try {
+    return await createWholesalerDocuments(wholesalerId, documents);
+  } catch (error) {
+
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (error.code === "23505") {
+      const err = new Error("DOCUMENTS_ALREADY_EXIST");
+      err.statusCode = 409;
+      throw err;
+    }
+
+    if (error.code === "23502") {
+      const err = new Error("MISSING_DOCUMENT_FIELD");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error;
+  }
+};
+
+//Update wholesaler status
+
+export const updateWholesalerStatusService = async (wholesalerId, status) => {
+  try {
+    const result = await updateWholesalerStatus(wholesalerId, status);
+
+    return {
+      success: true,
+      message:
+        status === "verified"
+          ? "Wholesaler verified successfully"
+          : "Wholesaler status updated successfully",
+      data: result,
+    };
+  } catch (error) {
+
+    if (error.message === "Wholesaler not found") {
+      const err = new Error("WHOLESALER_NOT_FOUND");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const err = new Error("FAILED_TO_UPDATE_STATUS");
+    err.statusCode = 500;
+    throw err;
+  }
+};
+
+// update wholesaler documents status
+export const updateWholesalerDocumentStatusService = async (
+  wholesalerId,
+  updates
+) => {
+  try {
+    return await updateWholesalerDocumentStatus(wholesalerId, updates);
+  } catch (error) {
+
+    if (error.message === "DOCUMENTS_NOT_FOUND") {
+      const err = new Error("DOCUMENTS_NOT_FOUND");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const err = new Error("FAILED_TO_UPDATE_DOCUMENT_STATUS");
+    err.statusCode = 500;
+    throw err;
+  }
+};
+
+
+export const updateWholesalerAndDocumentsService = async (
+  wholesalerId,
+  updateData,
+  adminUser
+) => {
+  try {
+    return await updateWholesalerAndDocuments(
+      wholesalerId,
+      updateData,
+      adminUser
+    );
+  } catch (error) {
+
+    // Wholesaler not found (manual throw)
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Invalid enum value or constraint
+    if (error.code === "22P02") {
+      const err = new Error("INVALID_STATUS_ENUM");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Foreign key violation
+    if (error.code === "23503") {
+      const err = new Error("INVALID_REFERENCE");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Not null violation
+    if (error.code === "23502") {
+      const err = new Error("MISSING_REQUIRED_FIELD");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error; // unknown error bubbles up
+  }
+};
+

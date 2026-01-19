@@ -2,10 +2,13 @@ import express from "express";
 
 import {
   createWholesalerController,
+  getWholesalerByIdController,
+  findAllWholesalersController,
   createWholesalerDocumentsController,
   updateWholesalerStatusOnlyController,
   updateWholesalerDocumentsStatusController,
   verifyWholesalerController,
+  deleteWholesalerByIdController,
 } from "./admin.wholesaler.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -18,7 +21,6 @@ import {
   createWholesalerDocumentsSchema,
   updateWholesalerStatusSchema,
   updateWholesalerDocumentsStatusSchema,
-  wholesalerIdParamSchema,
   verifyWholesalerSchema
 } from "./admin.wholesaler.schema.js";
 
@@ -32,6 +34,23 @@ router.post(
   validate(createWholesalerSchema),
   createWholesalerController
 );
+
+/* ================= GET WHOLESALER BY ID ================= */
+router.get(
+  "/:wholesalerId",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  getWholesalerByIdController
+);    
+
+/* ================= GET ALL WHOLESALERS ================= */
+router.get(
+  "/",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  findAllWholesalersController
+);  
+
 
 /* ================= STAGE 2 — UPLOAD DOCUMENTS ================= */
 router.post(
@@ -68,5 +87,12 @@ router.patch(
   validate(verifyWholesalerSchema),
   verifyWholesalerController
 );
+
+router.delete(
+  "/:wholesalerId",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  deleteWholesalerByIdController    
+)
 
 export default router;

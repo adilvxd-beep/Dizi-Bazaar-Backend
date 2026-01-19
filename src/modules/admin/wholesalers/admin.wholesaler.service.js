@@ -1,9 +1,12 @@
 import {
   createWholesalerBasic,
+  getWholesalerById,
+  findAllWholesalers,
   createWholesalerDocuments,
   updateWholesalerStatus,
   updateWholesalerDocumentStatus,
   updateWholesalerAndDocuments,
+  deleteWholesalerById,
 } from "./admin.wholesaler.repository.js";
 
 
@@ -37,6 +40,38 @@ export const createWholesalerBasicService = async (data, adminUser) => {
     throw error;
   }
 };
+
+//get WHOLESALER BY ID SERVICE
+export const getWholesalerByIdService = async (wholesalerId) => {
+  try {
+    return await getWholesalerById(wholesalerId);
+  } catch (error) {
+
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }                 
+    throw error;
+  }
+};
+
+//get ALL WHOLESALERS SERVICE
+export const findAllWholesalersService = async (query) => {
+  try {
+    return await findAllWholesalers(query);
+  } catch (error) {
+
+    // invalid number / pagination errors
+    if (error.code === "22P02") {
+      const err = new Error("INVALID_QUERY_PARAMS");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error; // unknown errors bubble to global handler
+  }
+};
+
 
 //CREATE WHOLESALER DOCUMENTS
 export const createWholesalerDocumentsService = async (
@@ -117,7 +152,7 @@ export const updateWholesalerDocumentStatusService = async (
   }
 };
 
-
+//bulk status change
 export const updateWholesalerAndDocumentsService = async (
   wholesalerId,
   updateData,
@@ -162,3 +197,19 @@ export const updateWholesalerAndDocumentsService = async (
   }
 };
 
+
+//delete wholesaler by id
+export const deleteWholesalerByIdService = async(wholesalerId) => {
+
+  try {
+    return await deleteWholesalerById(wholesalerId);
+  } catch (error) {
+
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    throw error;
+  }
+}

@@ -1,9 +1,12 @@
 import {
   createWholesalerBasicService,
+  getWholesalerByIdService,
+  findAllWholesalersService,
   createWholesalerDocumentsService,
   updateWholesalerStatusService,
   updateWholesalerDocumentStatusService,
   updateWholesalerAndDocumentsService,
+  deleteWholesalerByIdService,
 } from "./admin.wholesaler.service.js";
 
 import ApiResponse from "../../../shared/utils/ApiResponse.js";
@@ -24,6 +27,46 @@ export const createWholesalerController = async (req, res, next) => {
         201,
         result,
         "Wholesaler basic details created successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+//get wholesaler by id controller
+export const getWholesalerByIdController = async (req, res, next) => {
+  console.log("CONTROLLER HIT: getWholesalerByIdController");
+
+  try {
+    const { wholesalerId } = req.params;
+
+    const result = await getWholesalerByIdService(wholesalerId);
+
+    return res.status(200).json(    
+
+      new ApiResponse(
+        200,
+        result,
+        "Wholesaler details fetched successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};    
+
+export const findAllWholesalersController = async (req, res, next) => {
+  console.log("CONTROLLER HIT: findAllWholesalersController");
+
+  try {
+    const result = await findAllWholesalersService(req.query);
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        result,
+        "Wholesalers fetched successfully"
       )
     );
   } catch (error) {
@@ -100,6 +143,7 @@ export const updateWholesalerDocumentsStatusController = async (
   }
 };
 
+//bulk change controller
 export const verifyWholesalerController = async (req, res, next) => {
   console.log("CONTROLLER HIT: verifyWholesalerController");
 
@@ -127,4 +171,21 @@ export const verifyWholesalerController = async (req, res, next) => {
     next(error);
   }
 };
+
+//delete wholesaler by id controller
+export const deleteWholesalerByIdController = async (req, res, next) => {
+  console.log("CONTROLLER HIT: deleteWholesalerByIdController");
+
+  try {
+    const { wholesalerId } = req.params;
+
+    await deleteWholesalerByIdService(wholesalerId);
+
+    return res.status(200).json(
+      new ApiResponse(200, null, "Wholesaler deleted successfully")
+    );
+  } catch (error) {
+    next(error);
+  }
+};  
 

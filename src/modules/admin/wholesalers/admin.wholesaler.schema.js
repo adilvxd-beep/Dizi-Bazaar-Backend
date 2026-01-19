@@ -10,10 +10,7 @@ export const verificationStatus = z.enum([
 
 export const documentStatus = verificationStatus;
 
-/* ================= PARAM ================= */
-export const wholesalerIdParamSchema = z.object({
-  wholesalerId: z.coerce.number().int().positive("Invalid wholesaler ID"),
-});
+
 
 /* ================= STAGE 1 CREATE ================= */
 export const createWholesalerSchema = z.object({

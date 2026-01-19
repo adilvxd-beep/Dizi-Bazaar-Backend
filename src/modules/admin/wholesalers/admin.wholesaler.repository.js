@@ -9,9 +9,7 @@ export const createWholesalerBasic = async (data, adminUser) => {
     const { user, wholesaler } = data;
     const { id: adminId, role: adminRole } = adminUser;
 
-    /* =========================
-       CREATE USER
-    ========================= */
+    //create user
     const userRes = await client.query(
       `
       INSERT INTO users (username, email, phone, role)
@@ -27,9 +25,7 @@ export const createWholesalerBasic = async (data, adminUser) => {
 
     const userId = userRes.rows[0].id;
 
-    /* =========================
-       CREATE WHOLESALER
-    ========================= */
+    //create wholesaler
     const wholesalerRes = await client.query(
       `
       INSERT INTO wholesalers (
@@ -101,6 +97,145 @@ export const createWholesalerBasic = async (data, adminUser) => {
   }
 };
 
+export const getWholesalerById = async (wholesalerId) => {
+  const res = await pool.query(
+    `
+    SELECT *
+    FROM wholesalers
+    WHERE id = $1
+    `,
+    [wholesalerId]
+  );
+
+  if (res.rowCount === 0) {
+    throw new Error("WHOLESALER_NOT_FOUND");
+  }
+
+  return res.rows[0];
+};   
+
+
+export const findAllWholesalers = async (query = {}) => {
+  const {
+    search,
+    status,
+    business_category_id,
+    page = 1,
+    limit = 10,
+    sortBy = "created_at",
+    order = "desc",
+  } = query;
+
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  const allowedSortBy = [
+    "id",
+    "business_name",
+    "status",
+    "created_at",
+    "initial_credit_limit",
+  ];
+
+  const sortColumn = allowedSortBy.includes(sortBy)
+    ? `w.${sortBy}`
+    : "w.created_at";
+
+  const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+  const conditions = [];
+  const values = [];
+
+  /*  SEARCH (business name, owner, email, phone) */
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(
+      `(w.business_name ILIKE $${values.length}
+        OR w.owner_name ILIKE $${values.length}
+        OR w.email ILIKE $${values.length}
+        OR w.phone_number ILIKE $${values.length})`
+    );
+  }
+
+  /*  FILTER STATUS */
+  if (status) {
+    values.push(status);
+    conditions.push(`w.status = $${values.length}`);
+  }
+
+  /*  FILTER BUSINESS CATEGORY */
+  if (business_category_id) {
+    values.push(Number(business_category_id));
+    conditions.push(`w.business_category_id = $${values.length}`);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  /* ================= DATA QUERY ================= */
+  const dataQuery = `
+    SELECT
+      w.id,
+      w.business_name,
+      w.owner_name,
+      w.phone_number,
+      w.email,
+      w.status,
+      w.initial_credit_limit,
+      w.created_at,
+      w.updated_at,
+
+      u.id AS user_id,
+      u.username,
+      u.is_verified,
+
+      bc.name AS business_category_name,
+
+      d.gst_certificate_status,
+      d.pan_card_status,
+      d.aadhar_card_status,
+      d.bank_statement_status,
+      d.business_proof_status,
+      d.cancelled_cheque_status
+
+    FROM wholesalers w
+    JOIN users u ON u.id = w.user_id
+    LEFT JOIN business_categories bc ON bc.id = w.business_category_id
+    LEFT JOIN wholesaler_documents d ON d.wholesaler_id = w.id
+
+    ${whereClause}
+    ORDER BY ${sortColumn} ${sortOrder}
+    LIMIT $${values.length + 1}
+    OFFSET $${values.length + 2};
+  `;
+
+  const dataValues = [...values, pageLimit, offset];
+  const { rows } = await pool.query(dataQuery, dataValues);
+
+  /* ================= COUNT QUERY ================= */
+  const countQuery = `
+    SELECT COUNT(*)::int AS count
+    FROM wholesalers w
+    JOIN users u ON u.id = w.user_id
+    LEFT JOIN business_categories bc ON bc.id = w.business_category_id
+    LEFT JOIN wholesaler_documents d ON d.wholesaler_id = w.id
+    ${whereClause};
+  `;
+
+  const countResult = await pool.query(countQuery, values);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
+
+  return {
+    items: rows,
+    totalItems,
+    totalPages,
+    currentPage,
+  };
+};
+
+
 export const createWholesalerDocuments = async (
   wholesalerId,
   documents
@@ -110,9 +245,7 @@ export const createWholesalerDocuments = async (
   try {
     await client.query("BEGIN");
 
-    /* =========================
-       GET USER ID FROM WHOLESALER
-    ========================= */
+    // get wholesaler user_id
     const res = await client.query(
       `
       SELECT user_id
@@ -127,11 +260,7 @@ export const createWholesalerDocuments = async (
     }
 
     const userId = res.rows[0].user_id;
-
-    /* =========================
-       CREATE DOCUMENTS
-       status defaults to pending
-    ========================= */
+    //create documents  
     await client.query(
       `
       INSERT INTO wholesaler_documents (
@@ -222,9 +351,7 @@ export const updateWholesalerDocumentStatus = async (
   try {
     await client.query("BEGIN");
 
-    /* =========================
-       CHECK DOCUMENT RECORD EXISTS
-    ========================= */
+    //check if documents exist
     const docCheck = await client.query(
       `SELECT id FROM wholesaler_documents WHERE wholesaler_id = $1`,
       [wholesalerId]
@@ -234,9 +361,7 @@ export const updateWholesalerDocumentStatus = async (
       throw new Error("DOCUMENTS_NOT_FOUND");
     }
 
-    /* =========================
-       BUILD DYNAMIC UPDATE QUERY
-    ========================= */
+    //build dynamic query
     const fields = [];
     const values = [];
     let index = 1;
@@ -285,9 +410,7 @@ export const updateWholesalerAndDocuments = async (
   try {
     await client.query("BEGIN");
 
-    /* =========================
-        UPDATE WHOLESALER
-    ========================= */
+    //update wholesaler
     const fields = [];
     const values = [];
     let idx = 1;
@@ -333,9 +456,7 @@ export const updateWholesalerAndDocuments = async (
 
     const { status: newStatus, user_id } = wholesalerRes.rows[0];
 
-    /* =========================
-       SYNC USER (ENUM DRIVEN)
-    ========================= */
+    // update user verification status
     await client.query(
       `
       UPDATE users
@@ -346,9 +467,7 @@ export const updateWholesalerAndDocuments = async (
       [newStatus === "verified", user_id]
     );
 
-    /* =================================================
-       🔑 ENSURE DOCUMENT ROW EXISTS (CRITICAL FIX)
-    ================================================= */
+    //ensure documents record exists
     await client.query(
       `
       INSERT INTO wholesaler_documents (wholesaler_id, user_id)
@@ -358,10 +477,7 @@ export const updateWholesalerAndDocuments = async (
       [wholesalerId, user_id]
     );
 
-    /* =========================
-       SYNC DOCUMENT STATUSES
-       (ENUM → NO HARDCODING)
-    ========================= */
+    //sync all document statuses to wholesaler status
 await client.query(
   `
   UPDATE wholesaler_documents
@@ -394,3 +510,29 @@ await client.query(
     client.release();
   }
 };
+
+export const deleteWholesalerById = async (wholesalerId) => {
+
+  try {
+    const res = await pool.query(
+      `
+      DELETE FROM wholesalers
+      WHERE id = $1
+      RETURNING id
+      `,
+      [wholesalerId]
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    return {
+      wholesalerId,
+      deleted: true
+    };      
+  } catch (error) {
+    throw error;
+
+  }
+}

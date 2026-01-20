@@ -1,4 +1,4 @@
-import { registerUser, loginUser } from "./auth.service.js";
+import { registerUser, loginUser, signupWholesalerLiteService } from "./auth.service.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 import ApiError from "../../shared/utils/ApiError.js";
 
@@ -18,5 +18,21 @@ export const login = async (req, res, next) => {
     res.json(new ApiResponse(200, loginResult));
   } catch (error) {
     next(new ApiError(500, error.message));
+  }
+};
+
+export const signupWholesalerLiteController = async (req, res, next) => {
+  try {
+    const result = await signupWholesalerLiteService(req.body);
+
+    return res.status(201).json(
+      new ApiResponse(
+        201,
+        result,
+        "Wholesaler signup initiated successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
   }
 };

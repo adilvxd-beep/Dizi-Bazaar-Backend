@@ -28,6 +28,7 @@ import {
   getProductsByCategoryController,
   updateFullProduct,
   deleteFullProduct,
+  toggleProductStatus,
 } from "./admin.products.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -105,6 +106,13 @@ router.patch(
   authorize(ROLES.ADMIN),
   validate(updateProductSchema),
   updateProduct
+);
+
+router.patch(
+  "/:id/toggle-status",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  toggleProductStatus
 );
 
 router.delete("/:id", authenticate, authorize(ROLES.ADMIN), deleteProduct);

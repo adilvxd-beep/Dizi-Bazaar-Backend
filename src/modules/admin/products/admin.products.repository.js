@@ -172,6 +172,24 @@ export const updateProduct = async (id, productData) => {
   return result.rows[0];
 };
 
+export const toggleProductStatus = async (id) => {
+  const result = await pool.query(
+    `
+    UPDATE products
+    SET status = CASE 
+      WHEN status = 'active' THEN 'inactive'::status
+      ELSE 'active'::status
+    END,
+    updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING *
+    `,
+    [id]
+  );
+
+  return result.rows[0];
+};
+
 export const deleteProduct = async (id) => {
   await pool.query("DELETE FROM products WHERE id = $1", [id]);
 };

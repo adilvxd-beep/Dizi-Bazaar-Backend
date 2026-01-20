@@ -26,6 +26,7 @@ import {
   createProductWithVariantsAndSinglePrice,
   updateProductWithVariantsAndSinglePrice,
   deleteProductFull,
+  toggleProductStatus,
 } from "./admin.products.repository.js";
 
 // ==================== HELPER FUNCTIONS ====================
@@ -160,6 +161,17 @@ export const updateExistingProduct = async (id, productData) => {
   }
 
   return await updateProduct(Number(id), productData);
+};
+
+export const toggleProductStatusById = async (id) => {
+  if (!id) {
+    throw new Error("Product ID is required");
+  }
+
+  // Check if product exists
+  await getProductById(id);
+
+  return await toggleProductStatus(Number(id));
 };
 
 export const deleteProductById = async (id) => {

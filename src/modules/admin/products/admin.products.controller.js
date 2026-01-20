@@ -26,6 +26,7 @@ import {
   createFullProductWithVariantsAndPricing,
   updateFullProductWithVariantsAndPricing,
   deleteFullProductById,
+  toggleProductStatusById,
 } from "./admin.products.service.js";
 
 import ApiError from "../../../shared/utils/ApiError.js";
@@ -63,6 +64,15 @@ export const createProduct = async (req, res, next) => {
 export const updateProduct = async (req, res, next) => {
   try {
     const product = await updateExistingProduct(req.params.id, req.body);
+    res.json(new ApiResponse(200, product));
+  } catch (error) {
+    next(new ApiError(400, error.message));
+  }
+};
+
+export const toggleProductStatus = async (req, res, next) => {
+  try {
+    const product = await toggleProductStatusById(req.params.id);
     res.json(new ApiResponse(200, product));
   } catch (error) {
     next(new ApiError(400, error.message));

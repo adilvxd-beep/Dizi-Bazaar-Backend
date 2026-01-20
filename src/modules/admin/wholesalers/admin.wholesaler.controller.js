@@ -7,6 +7,7 @@ import {
   updateWholesalerDocumentStatusService,
   updateWholesalerAndDocumentsService,
   deleteWholesalerByIdService,
+  editWholesalerBasicAndDocumentsService,
 } from "./admin.wholesaler.service.js";
 
 import ApiResponse from "../../../shared/utils/ApiResponse.js";
@@ -189,3 +190,34 @@ export const deleteWholesalerByIdController = async (req, res, next) => {
   }
 };  
 
+
+// edit wholesaler basic + documents controller
+export const editWholesalerBasicAndDocumentsController = async (
+  req,
+  res,
+  next
+) => {
+  console.log(
+    "CONTROLLER HIT: editWholesalerBasicAndDocumentsController"
+  );
+
+  try {
+    const { wholesalerId } = req.params;
+
+    const result = await editWholesalerBasicAndDocumentsService(
+      wholesalerId,
+      req.body,
+      req.user // admin
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        result,
+        "Wholesaler details updated successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};

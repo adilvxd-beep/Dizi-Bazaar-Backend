@@ -9,6 +9,7 @@ import {
   updateWholesalerDocumentsStatusController,
   verifyWholesalerController,
   deleteWholesalerByIdController,
+  editWholesalerBasicAndDocumentsController
 } from "./admin.wholesaler.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -21,7 +22,8 @@ import {
   createWholesalerDocumentsSchema,
   updateWholesalerStatusSchema,
   updateWholesalerDocumentsStatusSchema,
-  verifyWholesalerSchema
+  verifyWholesalerSchema,
+  editWholesalerBasicAndDocumentsSchema,
 } from "./admin.wholesaler.schema.js";
 
 const router = express.Router();
@@ -94,5 +96,13 @@ router.delete(
   authorize(ROLES.ADMIN),
   deleteWholesalerByIdController    
 )
+
+router.patch(
+  "/:wholesalerId/edit-profile",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  validate(editWholesalerBasicAndDocumentsSchema),
+  editWholesalerBasicAndDocumentsController
+);
 
 export default router;

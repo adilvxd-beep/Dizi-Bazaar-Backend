@@ -7,6 +7,7 @@ import {
   updateWholesalerDocumentStatus,
   updateWholesalerAndDocuments,
   deleteWholesalerById,
+  editWholesalerBasicAndDocuments,
 } from "./admin.wholesaler.repository.js";
 
 
@@ -213,3 +214,42 @@ export const deleteWholesalerByIdService = async(wholesalerId) => {
     throw error;
   }
 }
+
+//edit wholesaler basic and documents
+// EDIT WHOLESALER (USER + BUSINESS + DOCUMENTS)
+export const editWholesalerBasicAndDocumentsService = async (
+  wholesalerId,
+  data,
+  adminUser
+) => {
+  try {
+    return await editWholesalerBasicAndDocuments(
+      wholesalerId,
+      data,
+      adminUser
+    );
+  } catch (error) {
+
+    // Wholesaler not found
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Foreign key violation
+    if (error.code === "23503") {
+      const err = new Error("INVALID_REFERENCE");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Not-null constraint violation
+    if (error.code === "23502") {
+      const err = new Error("MISSING_REQUIRED_FIELD");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error; // unknown errors bubble up
+  }
+};

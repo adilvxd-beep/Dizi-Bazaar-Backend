@@ -536,3 +536,142 @@ export const deleteWholesalerById = async (wholesalerId) => {
 
   }
 }
+
+export const editWholesalerBasicAndDocuments = async (
+  wholesalerId,
+  data,
+  adminUser
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { user, wholesaler, documents } = data;
+    const { id: adminId, role: adminRole } = adminUser;
+
+   //get wholesaler user_id
+    const res = await client.query(
+      `
+      SELECT user_id
+      FROM wholesalers
+      WHERE id = $1
+      `,
+      [wholesalerId]
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    const userId = res.rows[0].user_id;
+
+    //update users
+    if (user) {
+      await client.query(
+        `
+        UPDATE users
+        SET
+          username = COALESCE($1, username),
+          email = COALESCE($2, email),
+          phone = COALESCE($3, phone)
+        WHERE id = $4
+        `,
+        [
+          user.username,
+          user.email?.toLowerCase(),
+          user.phone,
+          userId
+        ]
+      );
+    }
+
+   //update wholesalers (same fields as create)
+    if (wholesaler) {
+      await client.query(
+  `
+  UPDATE wholesalers
+  SET
+    business_name = COALESCE($1, business_name),
+    business_category_id = COALESCE($2, business_category_id),
+    owner_name = COALESCE($3, owner_name),
+    phone_number = COALESCE($4, phone_number),
+    email = COALESCE($5, email),
+    alternate_phone_number = COALESCE($6, alternate_phone_number),
+    website_url = COALESCE($7, website_url),
+    business_address = COALESCE($8, business_address),
+    billing_address = COALESCE($9, billing_address),
+    gst_number = COALESCE($10, gst_number),
+    pan_number = COALESCE($11, pan_number),
+    aadhar_number = COALESCE($12, aadhar_number),
+    msme_number = COALESCE($13, msme_number),
+    years_in_business = COALESCE($14, years_in_business),
+    number_of_employees = COALESCE($15, number_of_employees),
+    annual_turnover = COALESCE($16, annual_turnover),
+    trade_license_number = COALESCE($17, trade_license_number)
+  WHERE id = $18
+  `,
+  [
+    wholesaler.businessName,
+    wholesaler.businessCategoryId,
+    wholesaler.ownerName,
+    user?.phone,
+    user?.email,
+    wholesaler.alternatePhoneNumber,
+    wholesaler.websiteUrl,
+    wholesaler.businessAddress,
+    wholesaler.billingAddress,
+    wholesaler.gstNumber,
+    wholesaler.panNumber,
+    wholesaler.aadharNumber,
+    wholesaler.msmeNumber,
+    wholesaler.yearsInBusiness,
+    wholesaler.numberOfEmployees,
+    wholesaler.annualTurnover,
+    wholesaler.tradeLicenseNumber,
+    wholesalerId
+  ]
+);
+
+    }
+
+    //update documents (same fields as create)
+    if (documents) {
+      await client.query(
+        `
+        UPDATE wholesaler_documents
+        SET
+          gst_certificate_url = COALESCE($1, gst_certificate_url),
+          pan_card_url = COALESCE($2, pan_card_url),
+          aadhar_card_url = COALESCE($3, aadhar_card_url),
+          bank_statement_url = COALESCE($4, bank_statement_url),
+          business_proof_url = COALESCE($5, business_proof_url),
+          cancelled_cheque_url = COALESCE($6, cancelled_cheque_url)
+        WHERE wholesaler_id = $7
+        `,
+        [
+          documents.gstCertificateUrl,
+          documents.panCardUrl,
+          documents.aadharCardUrl,
+          documents.bankStatementUrl,
+          documents.businessProofUrl,
+          documents.cancelledChequeUrl,
+          wholesalerId
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      updated: true
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};

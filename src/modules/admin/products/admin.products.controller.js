@@ -159,7 +159,7 @@ export const addVariantImages = async (req, res, next) => {
   try {
     const images = await addImagesToVariant(
       req.params.variantId,
-      req.body.images
+      req.body.images,
     );
     res.status(201).json(new ApiResponse(201, images));
   } catch (error) {
@@ -171,7 +171,7 @@ export const updateImageOrder = async (req, res, next) => {
   try {
     const image = await updateVariantImageOrder(
       req.params.imageId,
-      req.body.display_order
+      req.body.display_order,
     );
     res.json(new ApiResponse(200, image));
   } catch (error) {
@@ -225,7 +225,7 @@ export const bulkSetVariantPricing = async (req, res, next) => {
   try {
     const pricingRecords = await bulkCreateOrUpdateVariantPricing(
       req.user.id,
-      req.body.pricing
+      req.body.pricing,
     );
 
     res.status(201).json(new ApiResponse(201, pricingRecords));
@@ -248,14 +248,12 @@ export const deleteVariantPricing = async (req, res, next) => {
 
 export const createFullProduct = async (req, res, next) => {
   try {
-    // All form-data fields are expected to be parsed already
-    // product, variants, and pricing come from body
-    const { product, variants, pricing } = req.body;
+    // product and variants come from body
+    const { product, variants } = req.body;
 
-    // userId comes from auth middleware
     const userId = req.user.id;
 
-    // location is currently passed statically (later replace with geo resolver)
+    // Temporary static location
     const location = {
       state: "Uttar Pradesh",
       city: "Noida",
@@ -264,9 +262,8 @@ export const createFullProduct = async (req, res, next) => {
     const result = await createFullProductWithVariantsAndPricing(
       product,
       variants,
-      pricing,
       userId,
-      location
+      location,
     );
 
     res.status(201).json(new ApiResponse(201, result));
@@ -279,12 +276,11 @@ export const createFullProduct = async (req, res, next) => {
 
 export const updateFullProduct = async (req, res, next) => {
   try {
-    const { product, variants, pricing } = req.body;
+    const { product, variants } = req.body;
 
     const userId = req.user.id;
     const productId = req.params.id;
 
-    // location is currently passed statically (later replace with geo resolver)
     const location = {
       state: "Uttar Pradesh",
       city: "Noida",
@@ -294,9 +290,8 @@ export const updateFullProduct = async (req, res, next) => {
       productId,
       product,
       variants,
-      pricing,
       userId,
-      location
+      location,
     );
 
     res.status(200).json(new ApiResponse(200, result));
@@ -353,7 +348,7 @@ export const getProductsByCategoryController = async (req, res, next) => {
   try {
     const products = await getProductsByCategory(
       req.params.categoryId,
-      req.query
+      req.query,
     );
 
     res.json(new ApiResponse(200, products));

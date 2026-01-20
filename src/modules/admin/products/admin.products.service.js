@@ -345,7 +345,7 @@ export const getPricingByUser = async (userId, variantId = null) => {
 
   return await findPricingByUser(
     Number(userId),
-    variantId ? Number(variantId) : null
+    variantId ? Number(variantId) : null,
   );
 };
 
@@ -383,7 +383,7 @@ export const createOrUpdateVariantPricing = async (pricingData) => {
 
 export const bulkCreateOrUpdateVariantPricing = async (
   userId,
-  pricingArray
+  pricingArray,
 ) => {
   if (!userId) {
     throw new Error("User ID is required");
@@ -440,19 +440,14 @@ export const deleteVariantPricingById = async (variantId, userId) => {
 export const createFullProductWithVariantsAndPricing = async (
   productData,
   variants,
-  pricingData,
   userId,
-  location
+  location,
 ) => {
   // Basic validations
   validateProductData(productData);
 
   if (!variants || !Array.isArray(variants) || variants.length === 0) {
     throw new Error("Variants array is required");
-  }
-
-  if (!pricingData) {
-    throw new Error("Pricing data is required");
   }
 
   if (!userId) {
@@ -474,68 +469,74 @@ export const createFullProductWithVariantsAndPricing = async (
     productData.status = productData.status.trim().toLowerCase();
   }
 
-  // Format variants
+  // Format variants + validate per-variant pricing
   variants.forEach((variant, index) => {
     if (!variant.variant_name || !variant.sku) {
       throw new Error(
-        `Variant at index ${index} must have variant_name and sku`
+        `Variant at index ${index} must have variant_name and sku`,
       );
     }
 
     variant.variant_name = formatName(variant.variant_name);
     variant.sku = formatSKU(variant.sku);
 
-    if (variant.attribute_value_1) {
+    // Attributes
+    if (variant.attribute_value_1)
       variant.attribute_value_1 = variant.attribute_value_1.trim();
-    }
-    if (variant.attribute_value_2) {
+    if (variant.attribute_value_2)
       variant.attribute_value_2 = variant.attribute_value_2.trim();
-    }
-    if (variant.attribute_value_3) {
+    if (variant.attribute_value_3)
       variant.attribute_value_3 = variant.attribute_value_3.trim();
-    }
 
+    // Images
     if (variant.images) {
       variant.images.forEach((img, imgIndex) => {
         if (!img.image_url || !img.image_url.trim()) {
           throw new Error(
-            `Image URL is required for variant ${index}, image ${imgIndex}`
+            `Image URL required for variant ${index}, image ${imgIndex}`,
           );
         }
         img.image_url = img.image_url.trim();
       });
     }
+
+    // Per-variant pricing validation
+    if (!variant.pricing) {
+      throw new Error(`Pricing is required for variant at index ${index}`);
+    }
+
+    const { cost_price, selling_price, tax_percentage } = variant.pricing;
+
+    if (cost_price === undefined || selling_price === undefined) {
+      throw new Error(
+        `Cost price and selling price required for variant at index ${index}`,
+      );
+    }
+
+    variant.pricing.cost_price = parseFloat(cost_price);
+    variant.pricing.selling_price = parseFloat(selling_price);
+
+    if (
+      isNaN(variant.pricing.cost_price) ||
+      isNaN(variant.pricing.selling_price)
+    ) {
+      throw new Error(`Invalid pricing numbers for variant at index ${index}`);
+    }
+
+    if (tax_percentage !== undefined) {
+      variant.pricing.tax_percentage = parseFloat(tax_percentage);
+    }
   });
 
-  // Format pricing
-  if (
-    pricingData.cost_price === undefined ||
-    pricingData.selling_price === undefined
-  ) {
-    throw new Error("Cost price and selling price are required");
-  }
-
-  pricingData.cost_price = parseFloat(pricingData.cost_price);
-  pricingData.selling_price = parseFloat(pricingData.selling_price);
-
-  if (pricingData.tax_percentage !== undefined) {
-    pricingData.tax_percentage = parseFloat(pricingData.tax_percentage);
-  }
-
-  if (isNaN(pricingData.cost_price) || isNaN(pricingData.selling_price)) {
-    throw new Error("Invalid pricing numbers");
-  }
-
-  // Call repository transactional function
+  // Call repository
   return await createProductWithVariantsAndSinglePrice(
     productData,
     variants,
-    pricingData,
     Number(userId),
     {
       state: location.state.trim(),
       city: location.city.trim(),
-    }
+    },
   );
 };
 
@@ -545,26 +546,18 @@ export const updateFullProductWithVariantsAndPricing = async (
   productId,
   productData,
   variants,
-  pricingData,
   userId,
-  location
+  location,
 ) => {
   if (!productId) {
     throw new Error("Product ID is required");
   }
 
-  // Ensure product exists
   await getProductById(productId);
-
-  // Reuse same validations as create
   validateProductData(productData);
 
   if (!variants || !Array.isArray(variants) || variants.length === 0) {
     throw new Error("Variants array is required");
-  }
-
-  if (!pricingData) {
-    throw new Error("Pricing data is required");
   }
 
   if (!userId) {
@@ -575,79 +568,81 @@ export const updateFullProductWithVariantsAndPricing = async (
     throw new Error("Valid location (state, city) is required");
   }
 
-  // Format product fields
+  // Format product
   productData.product_name = formatName(productData.product_name);
 
-  if (productData.description) {
+  if (productData.description)
     productData.description = productData.description.trim();
-  }
 
-  if (productData.status) {
+  if (productData.status)
     productData.status = productData.status.trim().toLowerCase();
-  }
 
-  // Format variants
+  // Format variants + per-variant pricing
   variants.forEach((variant, index) => {
     if (!variant.variant_name || !variant.sku) {
       throw new Error(
-        `Variant at index ${index} must have variant_name and sku`
+        `Variant at index ${index} must have variant_name and sku`,
       );
     }
 
     variant.variant_name = formatName(variant.variant_name);
     variant.sku = formatSKU(variant.sku);
 
-    if (variant.attribute_value_1) {
+    if (variant.attribute_value_1)
       variant.attribute_value_1 = variant.attribute_value_1.trim();
-    }
-    if (variant.attribute_value_2) {
+    if (variant.attribute_value_2)
       variant.attribute_value_2 = variant.attribute_value_2.trim();
-    }
-    if (variant.attribute_value_3) {
+    if (variant.attribute_value_3)
       variant.attribute_value_3 = variant.attribute_value_3.trim();
-    }
 
     if (variant.images) {
       variant.images.forEach((img, imgIndex) => {
         if (!img.image_url || !img.image_url.trim()) {
           throw new Error(
-            `Image URL is required for variant ${index}, image ${imgIndex}`
+            `Image URL required for variant ${index}, image ${imgIndex}`,
           );
         }
         img.image_url = img.image_url.trim();
       });
     }
+
+    // Pricing
+    if (!variant.pricing) {
+      throw new Error(`Pricing is required for variant at index ${index}`);
+    }
+
+    const { cost_price, selling_price, tax_percentage } = variant.pricing;
+
+    if (cost_price === undefined || selling_price === undefined) {
+      throw new Error(
+        `Cost price and selling price required for variant at index ${index}`,
+      );
+    }
+
+    variant.pricing.cost_price = parseFloat(cost_price);
+    variant.pricing.selling_price = parseFloat(selling_price);
+
+    if (
+      isNaN(variant.pricing.cost_price) ||
+      isNaN(variant.pricing.selling_price)
+    ) {
+      throw new Error(`Invalid pricing numbers for variant at index ${index}`);
+    }
+
+    if (tax_percentage !== undefined) {
+      variant.pricing.tax_percentage = parseFloat(tax_percentage);
+    }
   });
-
-  // Format pricing
-  if (
-    pricingData.cost_price === undefined ||
-    pricingData.selling_price === undefined
-  ) {
-    throw new Error("Cost price and selling price are required");
-  }
-
-  pricingData.cost_price = parseFloat(pricingData.cost_price);
-  pricingData.selling_price = parseFloat(pricingData.selling_price);
-
-  if (pricingData.tax_percentage !== undefined) {
-    pricingData.tax_percentage = parseFloat(pricingData.tax_percentage);
-  }
-
-  if (isNaN(pricingData.cost_price) || isNaN(pricingData.selling_price)) {
-    throw new Error("Invalid pricing numbers");
-  }
 
   return await updateProductWithVariantsAndSinglePrice(
     Number(productId),
     productData,
     variants,
-    pricingData,
     Number(userId),
     {
       state: location.state.trim(),
       city: location.city.trim(),
-    }
+    },
   );
 };
 
@@ -673,7 +668,7 @@ export const getCompleteProduct = async (productId, userId = null) => {
 
   const product = await findCompleteProduct(
     Number(productId),
-    userId ? Number(userId) : null
+    userId ? Number(userId) : null,
   );
 
   if (!product) {

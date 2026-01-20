@@ -14,7 +14,7 @@ export const findProductById = async (id) => {
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE p.id = $1
     `,
-    [id]
+    [id],
   );
   return result.rows[0];
 };
@@ -48,7 +48,7 @@ export const findAllProducts = async (query = {}) => {
   if (search) {
     values.push(`%${search}%`);
     conditions.push(
-      `(p.product_name ILIKE $${values.length} OR p.description ILIKE $${values.length})`
+      `(p.product_name ILIKE $${values.length} OR p.description ILIKE $${values.length})`,
     );
   }
 
@@ -136,7 +136,7 @@ export const createProduct = async (productData) => {
       description,
       main_image,
       status,
-    ]
+    ],
   );
   return result.rows[0];
 };
@@ -167,7 +167,7 @@ export const updateProduct = async (id, productData) => {
     WHERE id = $${paramCount}
     RETURNING *
     `,
-    values
+    values,
   );
   return result.rows[0];
 };
@@ -184,7 +184,7 @@ export const toggleProductStatus = async (id) => {
     WHERE id = $1
     RETURNING *
     `,
-    [id]
+    [id],
   );
 
   return result.rows[0];
@@ -213,7 +213,7 @@ export const findVariantById = async (id) => {
     WHERE pv.id = $1
     GROUP BY pv.id
     `,
-    [id]
+    [id],
   );
   return result.rows[0];
 };
@@ -225,7 +225,7 @@ export const findVariantsByProductId = async (productId) => {
     WHERE product_id = $1
     ORDER BY created_at DESC
     `,
-    [productId]
+    [productId],
   );
   return rows;
 };
@@ -242,7 +242,7 @@ export const findVariantBySKU = async (sku) => {
     JOIN products p ON pv.product_id = p.id
     WHERE pv.sku = $1
     `,
-    [sku]
+    [sku],
   );
   return result.rows[0];
 };
@@ -278,7 +278,7 @@ export const createVariant = async (variantData) => {
       attribute_name_3,
       attribute_value_3,
       sku,
-    ]
+    ],
   );
   return result.rows[0];
 };
@@ -309,7 +309,7 @@ export const updateVariant = async (id, variantData) => {
     WHERE id = $${paramCount}
     RETURNING *
     `,
-    values
+    values,
   );
   return result.rows[0];
 };
@@ -327,7 +327,7 @@ export const findVariantImages = async (variantId) => {
     WHERE variant_id = $1
     ORDER BY display_order
     `,
-    [variantId]
+    [variantId],
   );
   return rows;
 };
@@ -348,7 +348,7 @@ export const addVariantImages = async (variantId, images) => {
     VALUES ${placeholders.join(", ")}
     RETURNING *
     `,
-    values
+    values,
   );
   return rows;
 };
@@ -361,7 +361,7 @@ export const updateImageOrder = async (id, displayOrder) => {
     WHERE id = $2
     RETURNING *
     `,
-    [displayOrder, id]
+    [displayOrder, id],
   );
   return result.rows[0];
 };
@@ -414,7 +414,7 @@ export const findPricingByVariant = async (variantId) => {
     WHERE vp.variant_id = $1
     ORDER BY vp.selling_price
     `,
-    [variantId]
+    [variantId],
   );
   return rows;
 };
@@ -453,7 +453,7 @@ export const setVariantPricing = async (pricingData) => {
       tax_percentage || 0,
       state,
       city,
-    ]
+    ],
   );
   return result.rows[0];
 };
@@ -467,7 +467,7 @@ export const bulkSetVariantPricing = async (userId, pricingArray) => {
     placeholders.push(
       `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${
         offset + 5
-      }, $${offset + 6}, $${offset + 7})`
+      }, $${offset + 6}, $${offset + 7})`,
     );
     values.push(
       pricing.variant_id,
@@ -476,7 +476,7 @@ export const bulkSetVariantPricing = async (userId, pricingArray) => {
       pricing.selling_price,
       pricing.tax_percentage || 0,
       pricing.state,
-      pricing.city
+      pricing.city,
     );
   });
 
@@ -495,7 +495,7 @@ export const bulkSetVariantPricing = async (userId, pricingArray) => {
       updated_at = CURRENT_TIMESTAMP
     RETURNING *
     `,
-    values
+    values,
   );
   return rows;
 };
@@ -506,7 +506,7 @@ export const deleteVariantPricing = async (variantId, userId) => {
     DELETE FROM variant_pricing
     WHERE variant_id = $1 AND user_id = $2
     `,
-    [variantId, userId]
+    [variantId, userId],
   );
 };
 
@@ -516,9 +516,8 @@ export const deleteVariantPricing = async (variantId, userId) => {
 export const createProductWithVariantsAndSinglePrice = async (
   productData,
   variants,
-  pricingData,
   userId,
-  location
+  location,
 ) => {
   const client = await pool.connect();
 
@@ -530,7 +529,7 @@ export const createProductWithVariantsAndSinglePrice = async (
       `
       INSERT INTO products 
       (product_name, business_category_id, category_id, description, main_image, status)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1,$2,$3,$4,$5,$6)
       RETURNING *
       `,
       [
@@ -540,14 +539,13 @@ export const createProductWithVariantsAndSinglePrice = async (
         productData.description,
         productData.main_image,
         productData.status || "active",
-      ]
+      ],
     );
 
     const product = productResult.rows[0];
-
-    // 2. Insert Variants
     const createdVariants = [];
 
+    // 2. Insert Variants + Images + Pricing
     for (const variant of variants) {
       const variantResult = await client.query(
         `
@@ -567,53 +565,53 @@ export const createProductWithVariantsAndSinglePrice = async (
           variant.attribute_name_3,
           variant.attribute_value_3,
           variant.sku,
-        ]
+        ],
       );
 
       const createdVariant = variantResult.rows[0];
 
-      // 3. Insert Variant Images
-      if (variant.images && variant.images.length > 0) {
+      // Variant Images
+      if (variant.images?.length) {
         const imgValues = [];
         const imgPlaceholders = [];
 
         variant.images.forEach((img, index) => {
           const offset = index * 3;
           imgPlaceholders.push(
-            `($${offset + 1}, $${offset + 2}, $${offset + 3})`
+            `($${offset + 1},$${offset + 2},$${offset + 3})`,
           );
           imgValues.push(
             createdVariant.id,
             img.image_url,
-            img.display_order || index
+            img.display_order || index,
           );
         });
 
         await client.query(
           `
-          INSERT INTO variant_images (variant_id, image_url, display_order)
-          VALUES ${imgPlaceholders.join(", ")}
+          INSERT INTO variant_images (variant_id,image_url,display_order)
+          VALUES ${imgPlaceholders.join(",")}
           `,
-          imgValues
+          imgValues,
         );
       }
 
-      // 4. Insert Single Pricing for each Variant
+      // Per-Variant Pricing
       await client.query(
         `
         INSERT INTO variant_pricing
-        (variant_id, user_id, cost_price, selling_price, tax_percentage, state, city)
+        (variant_id,user_id,cost_price,selling_price,tax_percentage,state,city)
         VALUES ($1,$2,$3,$4,$5,$6,$7)
         `,
         [
           createdVariant.id,
           userId,
-          pricingData.cost_price,
-          pricingData.selling_price,
-          pricingData.tax_percentage || 0,
+          variant.pricing.cost_price,
+          variant.pricing.selling_price,
+          variant.pricing.tax_percentage || 0,
           location.state,
           location.city,
-        ]
+        ],
       );
 
       createdVariants.push(createdVariant);
@@ -621,10 +619,7 @@ export const createProductWithVariantsAndSinglePrice = async (
 
     await client.query("COMMIT");
 
-    return {
-      product,
-      variants: createdVariants,
-    };
+    return { product, variants: createdVariants };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -640,27 +635,26 @@ export const updateProductWithVariantsAndSinglePrice = async (
   productId,
   productData,
   variants,
-  pricingData,
   userId,
-  location
+  location,
 ) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // 1. Update Product
+    // Update product
     await client.query(
       `
       UPDATE products
-      SET product_name = $1,
-          business_category_id = $2,
-          category_id = $3,
-          description = $4,
-          main_image = $5,
-          status = $6,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
+      SET product_name=$1,
+          business_category_id=$2,
+          category_id=$3,
+          description=$4,
+          main_image=$5,
+          status=$6,
+          updated_at=CURRENT_TIMESTAMP
+      WHERE id=$7
       `,
       [
         productData.product_name,
@@ -670,23 +664,22 @@ export const updateProductWithVariantsAndSinglePrice = async (
         productData.main_image,
         productData.status || "active",
         productId,
-      ]
+      ],
     );
 
-    // 2. Delete old variants (cascade will delete images & pricing if FK is set)
-    await client.query(`DELETE FROM product_variants WHERE product_id = $1`, [
+    // Remove old variants (images & pricing cascade)
+    await client.query(`DELETE FROM product_variants WHERE product_id=$1`, [
       productId,
     ]);
 
-    // 3. Re-insert variants + images + pricing
     const createdVariants = [];
 
     for (const variant of variants) {
       const variantResult = await client.query(
         `
         INSERT INTO product_variants 
-        (product_id, variant_name, attribute_name_1, attribute_value_1,
-         attribute_name_2, attribute_value_2, attribute_name_3, attribute_value_3, sku)
+        (product_id,variant_name,attribute_name_1,attribute_value_1,
+         attribute_name_2,attribute_value_2,attribute_name_3,attribute_value_3,sku)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
         RETURNING *
         `,
@@ -700,64 +693,60 @@ export const updateProductWithVariantsAndSinglePrice = async (
           variant.attribute_name_3,
           variant.attribute_value_3,
           variant.sku,
-        ]
+        ],
       );
 
       const createdVariant = variantResult.rows[0];
 
-      // Insert Variant Images
-      if (variant.images && variant.images.length > 0) {
+      // Images
+      if (variant.images?.length) {
         const imgValues = [];
         const imgPlaceholders = [];
 
         variant.images.forEach((img, index) => {
           const offset = index * 3;
           imgPlaceholders.push(
-            `($${offset + 1}, $${offset + 2}, $${offset + 3})`
+            `($${offset + 1},$${offset + 2},$${offset + 3})`,
           );
           imgValues.push(
             createdVariant.id,
             img.image_url,
-            img.display_order || index
+            img.display_order || index,
           );
         });
 
         await client.query(
           `
-          INSERT INTO variant_images (variant_id, image_url, display_order)
-          VALUES ${imgPlaceholders.join(", ")}
+          INSERT INTO variant_images (variant_id,image_url,display_order)
+          VALUES ${imgPlaceholders.join(",")}
           `,
-          imgValues
+          imgValues,
         );
       }
 
-      // Insert Pricing
+      // Per-Variant Pricing
       await client.query(
         `
         INSERT INTO variant_pricing
-        (variant_id, user_id, cost_price, selling_price, tax_percentage, state, city)
+        (variant_id,user_id,cost_price,selling_price,tax_percentage,state,city)
         VALUES ($1,$2,$3,$4,$5,$6,$7)
         `,
         [
           createdVariant.id,
           userId,
-          pricingData.cost_price,
-          pricingData.selling_price,
-          pricingData.tax_percentage || 0,
+          variant.pricing.cost_price,
+          variant.pricing.selling_price,
+          variant.pricing.tax_percentage || 0,
           location.state,
           location.city,
-        ]
+        ],
       );
 
       createdVariants.push(createdVariant);
     }
 
     await client.query("COMMIT");
-
-    return {
-      productId,
-      variants: createdVariants,
-    };
+    return { productId, variants: createdVariants };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -783,7 +772,7 @@ export const deleteProductFull = async (productId) => {
         SELECT id FROM product_variants WHERE product_id = $1
       )
       `,
-      [productId]
+      [productId],
     );
 
     // Delete variant images
@@ -794,7 +783,7 @@ export const deleteProductFull = async (productId) => {
         SELECT id FROM product_variants WHERE product_id = $1
       )
       `,
-      [productId]
+      [productId],
     );
 
     // Delete variants
@@ -865,7 +854,7 @@ export const findCompleteProduct = async (productId, userId = null) => {
     WHERE p.id = $1
     GROUP BY p.id, bc.name, c.name
     `,
-    [productId, userId]
+    [productId, userId],
   );
   return result.rows[0];
 };

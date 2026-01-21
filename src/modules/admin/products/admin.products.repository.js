@@ -832,7 +832,7 @@ export const findCompleteProduct = async (productId, userId = null) => {
             WHERE vi.variant_id = pv.id
           ),
           'pricing', CASE 
-            WHEN $2 IS NOT NULL THEN (
+            WHEN $2::int IS NOT NULL THEN (
               SELECT json_build_object(
                 'cost_price', vp.cost_price,
                 'selling_price', vp.selling_price,

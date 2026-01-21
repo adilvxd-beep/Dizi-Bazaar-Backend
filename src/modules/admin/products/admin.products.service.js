@@ -75,7 +75,7 @@ function validateVariantData(variantData) {
 }
 
 function validatePricingData(pricingData) {
-  const { variant_id, user_id, cost_price, selling_price } = pricingData;
+  const { variant_id, user_id, cost_price, selling_price, mrp } = pricingData;
 
   if (!variant_id) {
     throw new Error("Variant ID is required");
@@ -93,12 +93,24 @@ function validatePricingData(pricingData) {
     throw new Error("Selling price is required");
   }
 
+  if (mrp === undefined || mrp === null) {
+    throw new Error("MRP is required");
+  }
+
   if (parseFloat(cost_price) < 0) {
     throw new Error("Cost price cannot be negative");
   }
 
   if (parseFloat(selling_price) < 0) {
     throw new Error("Selling price cannot be negative");
+  }
+
+  if (parseFloat(mrp) < 0) {
+    throw new Error("MRP cannot be negative");
+  }
+
+  if (parseFloat(mrp) < parseFloat(selling_price)) {
+    throw new Error("MRP cannot be less than selling price");
   }
 }
 
@@ -360,11 +372,11 @@ export const getPricingByVariant = async (variantId) => {
 export const createOrUpdateVariantPricing = async (pricingData) => {
   validatePricingData(pricingData);
 
-  // Ensure numeric values
   pricingData.variant_id = Number(pricingData.variant_id);
   pricingData.user_id = Number(pricingData.user_id);
   pricingData.cost_price = parseFloat(pricingData.cost_price);
   pricingData.selling_price = parseFloat(pricingData.selling_price);
+  pricingData.mrp = parseFloat(pricingData.mrp);
 
   if (pricingData.tax_percentage !== undefined) {
     pricingData.tax_percentage = parseFloat(pricingData.tax_percentage);
@@ -408,6 +420,7 @@ export const bulkCreateOrUpdateVariantPricing = async (
     pricing.variant_id = Number(pricing.variant_id);
     pricing.cost_price = parseFloat(pricing.cost_price);
     pricing.selling_price = parseFloat(pricing.selling_price);
+    pricing.mrp = parseFloat(pricing.mrp);
 
     if (pricing.tax_percentage !== undefined) {
       pricing.tax_percentage = parseFloat(pricing.tax_percentage);
@@ -505,20 +518,32 @@ export const createFullProductWithVariantsAndPricing = async (
       throw new Error(`Pricing is required for variant at index ${index}`);
     }
 
-    const { cost_price, selling_price, tax_percentage } = variant.pricing;
+    const { cost_price, selling_price, mrp, tax_percentage } = variant.pricing;
 
-    if (cost_price === undefined || selling_price === undefined) {
+    if (
+      cost_price === undefined ||
+      selling_price === undefined ||
+      mrp === undefined
+    ) {
       throw new Error(
-        `Cost price and selling price required for variant at index ${index}`,
+        `Cost price, selling price and MRP required for variant at index ${index}`,
       );
     }
 
     variant.pricing.cost_price = parseFloat(cost_price);
     variant.pricing.selling_price = parseFloat(selling_price);
+    variant.pricing.mrp = parseFloat(mrp);
+
+    if (variant.pricing.mrp < variant.pricing.selling_price) {
+      throw new Error(
+        `MRP cannot be less than selling price for variant at index ${index}`,
+      );
+    }
 
     if (
       isNaN(variant.pricing.cost_price) ||
-      isNaN(variant.pricing.selling_price)
+      isNaN(variant.pricing.selling_price) ||
+      isNaN(variant.pricing.mrp)
     ) {
       throw new Error(`Invalid pricing numbers for variant at index ${index}`);
     }
@@ -611,20 +636,26 @@ export const updateFullProductWithVariantsAndPricing = async (
       throw new Error(`Pricing is required for variant at index ${index}`);
     }
 
-    const { cost_price, selling_price, tax_percentage } = variant.pricing;
+    const { cost_price, selling_price, mrp, tax_percentage } = variant.pricing;
 
-    if (cost_price === undefined || selling_price === undefined) {
+    if (
+      cost_price === undefined ||
+      selling_price === undefined ||
+      mrp === undefined
+    ) {
       throw new Error(
-        `Cost price and selling price required for variant at index ${index}`,
+        `Cost price, selling price and MRP required for variant at index ${index}`,
       );
     }
 
     variant.pricing.cost_price = parseFloat(cost_price);
     variant.pricing.selling_price = parseFloat(selling_price);
+    variant.pricing.mrp = parseFloat(mrp);
 
     if (
       isNaN(variant.pricing.cost_price) ||
-      isNaN(variant.pricing.selling_price)
+      isNaN(variant.pricing.selling_price) ||
+      isNaN(variant.pricing.mrp)
     ) {
       throw new Error(`Invalid pricing numbers for variant at index ${index}`);
     }

@@ -425,6 +425,7 @@ export const setVariantPricing = async (pricingData) => {
     user_id,
     cost_price,
     selling_price,
+    mrp,
     tax_percentage,
     state,
     city,
@@ -433,12 +434,13 @@ export const setVariantPricing = async (pricingData) => {
   const result = await pool.query(
     `
     INSERT INTO variant_pricing 
-    (variant_id, user_id, cost_price, selling_price, tax_percentage, state, city)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    (variant_id, user_id, cost_price, selling_price, mrp, tax_percentage, state, city)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT (variant_id, user_id)
     DO UPDATE SET
       cost_price = EXCLUDED.cost_price,
       selling_price = EXCLUDED.selling_price,
+      mrp = EXCLUDED.mrp,
       tax_percentage = EXCLUDED.tax_percentage,
       state = EXCLUDED.state,
       city = EXCLUDED.city,
@@ -450,6 +452,7 @@ export const setVariantPricing = async (pricingData) => {
       user_id,
       cost_price,
       selling_price,
+      mrp || selling_price * 1.5, // Default MRP is 50% above selling price if not provided
       tax_percentage || 0,
       state,
       city,
@@ -463,17 +466,17 @@ export const bulkSetVariantPricing = async (userId, pricingArray) => {
   const placeholders = [];
 
   pricingArray.forEach((pricing, index) => {
-    const offset = index * 7;
+    const offset = index * 8;
     placeholders.push(
-      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${
-        offset + 5
-      }, $${offset + 6}, $${offset + 7})`,
+      `($${offset + 1},$${offset + 2},$${offset + 3},$${offset + 4},$${offset + 5},$${offset + 6},$${offset + 7},$${offset + 8})`,
     );
+
     values.push(
       pricing.variant_id,
       userId,
       pricing.cost_price,
       pricing.selling_price,
+      pricing.mrp || pricing.selling_price * 1.5, // Default MRP is 50% above selling price
       pricing.tax_percentage || 0,
       pricing.state,
       pricing.city,
@@ -482,13 +485,14 @@ export const bulkSetVariantPricing = async (userId, pricingArray) => {
 
   const { rows } = await pool.query(
     `
-    INSERT INTO variant_pricing 
-    (variant_id, user_id, cost_price, selling_price, tax_percentage, state, city)
+    INSERT INTO variant_pricing
+    (variant_id,user_id,cost_price,selling_price,mrp,tax_percentage,state,city)
     VALUES ${placeholders.join(", ")}
     ON CONFLICT (variant_id, user_id)
     DO UPDATE SET
       cost_price = EXCLUDED.cost_price,
       selling_price = EXCLUDED.selling_price,
+      mrp = EXCLUDED.mrp,
       tax_percentage = EXCLUDED.tax_percentage,
       state = EXCLUDED.state,
       city = EXCLUDED.city,
@@ -596,18 +600,19 @@ export const createProductWithVariantsAndSinglePrice = async (
         );
       }
 
-      // Per-Variant Pricing
+      // Per-Variant Pricing with MRP
       await client.query(
         `
         INSERT INTO variant_pricing
-        (variant_id,user_id,cost_price,selling_price,tax_percentage,state,city)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        (variant_id,user_id,cost_price,selling_price,mrp,tax_percentage,state,city)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         `,
         [
           createdVariant.id,
           userId,
           variant.pricing.cost_price,
           variant.pricing.selling_price,
+          variant.pricing.mrp || variant.pricing.selling_price * 1.5, // Default MRP
           variant.pricing.tax_percentage || 0,
           location.state,
           location.city,
@@ -724,18 +729,19 @@ export const updateProductWithVariantsAndSinglePrice = async (
         );
       }
 
-      // Per-Variant Pricing
+      // Per-Variant Pricing with MRP
       await client.query(
         `
         INSERT INTO variant_pricing
-        (variant_id,user_id,cost_price,selling_price,tax_percentage,state,city)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        (variant_id,user_id,cost_price,selling_price,mrp,tax_percentage,state,city)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         `,
         [
           createdVariant.id,
           userId,
           variant.pricing.cost_price,
           variant.pricing.selling_price,
+          variant.pricing.mrp || variant.pricing.selling_price * 1.5, // Default MRP
           variant.pricing.tax_percentage || 0,
           location.state,
           location.city,
@@ -836,6 +842,7 @@ export const findCompleteProduct = async (productId, userId = null) => {
               SELECT json_build_object(
                 'cost_price', vp.cost_price,
                 'selling_price', vp.selling_price,
+                'mrp', vp.mrp,
                 'tax_percentage', vp.tax_percentage,
                 'state', vp.state,
                 'city', vp.city
@@ -951,7 +958,7 @@ export const findProductsWithPriceStats = async (query = {}) => {
   const sortColumn = allowedSortBy.includes(sortBy) ? sortBy : "created_at";
   const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
 
-  // Data query
+  // Data query with MRP stats
   const dataQuery = `
     SELECT 
       p.*,
@@ -959,7 +966,10 @@ export const findProductsWithPriceStats = async (query = {}) => {
       COUNT(DISTINCT vp.user_id)::int as wholesaler_count,
       MIN(vp.selling_price) as min_price,
       MAX(vp.selling_price) as max_price,
-      AVG(vp.selling_price) as avg_price
+      AVG(vp.selling_price) as avg_price,
+      MIN(vp.mrp) as min_mrp,
+      MAX(vp.mrp) as max_mrp,
+      AVG(vp.mrp) as avg_mrp
     FROM products p
     LEFT JOIN product_variants pv ON p.id = pv.product_id
     LEFT JOIN variant_pricing vp ON pv.id = vp.variant_id
@@ -1026,6 +1036,154 @@ export const findProductsByCategory = async (categoryId, query = {}) => {
   `;
 
   const countResult = await pool.query(countQuery, [categoryId]);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
+
+  return {
+    items: rows,
+    totalItems,
+    totalPages,
+    currentPage,
+  };
+};
+
+// ==================== NEW FUNCTIONS FOR MRP ====================
+
+export const updateVariantMRP = async (variantId, userId, mrp) => {
+  const result = await pool.query(
+    `
+    UPDATE variant_pricing
+    SET mrp = $3, updated_at = CURRENT_TIMESTAMP
+    WHERE variant_id = $1 AND user_id = $2
+    RETURNING *
+    `,
+    [variantId, userId, mrp],
+  );
+  return result.rows[0];
+};
+
+export const findProductsByMRPRange = async (minMRP, maxMRP, query = {}) => {
+  const { page = 1, limit = 10, sortBy = "created_at", order = "desc" } = query;
+
+  // Ensure numbers
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  // Allowed sortable columns
+  const allowedSortBy = ["id", "product_name", "created_at"];
+  const sortColumn = allowedSortBy.includes(sortBy) ? sortBy : "created_at";
+  const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+  const dataQuery = `
+    SELECT DISTINCT
+      p.*,
+      bc.name as business_category_name,
+      c.name as category_name,
+      MIN(vp.mrp) as min_mrp,
+      MAX(vp.mrp) as max_mrp
+    FROM products p
+    LEFT JOIN business_categories bc ON p.business_category_id = bc.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN product_variants pv ON p.id = pv.product_id
+    LEFT JOIN variant_pricing vp ON pv.id = vp.variant_id
+    WHERE vp.mrp BETWEEN $1 AND $2
+    GROUP BY p.id, bc.name, c.name
+    ORDER BY ${sortColumn} ${sortOrder}
+    LIMIT $3 OFFSET $4
+  `;
+
+  const { rows } = await pool.query(dataQuery, [
+    minMRP,
+    maxMRP,
+    pageLimit,
+    offset,
+  ]);
+
+  const countQuery = `
+    SELECT COUNT(DISTINCT p.id)::int AS count
+    FROM products p
+    LEFT JOIN product_variants pv ON p.id = pv.product_id
+    LEFT JOIN variant_pricing vp ON pv.id = vp.variant_id
+    WHERE vp.mrp BETWEEN $1 AND $2
+  `;
+
+  const countResult = await pool.query(countQuery, [minMRP, maxMRP]);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
+
+  return {
+    items: rows,
+    totalItems,
+    totalPages,
+    currentPage,
+  };
+};
+
+export const findDiscountedProducts = async (
+  minDiscountPercent = 10,
+  query = {},
+) => {
+  const {
+    page = 1,
+    limit = 10,
+    sortBy = "discount_percent",
+    order = "desc",
+  } = query;
+
+  // Ensure numbers
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  // Allowed sortable columns
+  const allowedSortBy = ["discount_percent", "product_name", "created_at"];
+  const sortColumn = allowedSortBy.includes(sortBy)
+    ? sortBy
+    : "discount_percent";
+  const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+  const dataQuery = `
+    SELECT DISTINCT
+      p.*,
+      bc.name as business_category_name,
+      c.name as category_name,
+      AVG(vp.mrp - vp.selling_price) as avg_discount,
+      AVG((vp.mrp - vp.selling_price) * 100.0 / vp.mrp) as avg_discount_percent
+    FROM products p
+    LEFT JOIN business_categories bc ON p.business_category_id = bc.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN product_variants pv ON p.id = pv.product_id
+    LEFT JOIN variant_pricing vp ON pv.id = vp.variant_id
+    WHERE vp.mrp > vp.selling_price
+      AND ((vp.mrp - vp.selling_price) * 100.0 / vp.mrp) >= $1
+    GROUP BY p.id, bc.name, c.name
+    HAVING AVG((vp.mrp - vp.selling_price) * 100.0 / vp.mrp) >= $1
+    ORDER BY ${sortColumn} ${sortOrder}
+    LIMIT $2 OFFSET $3
+  `;
+
+  const { rows } = await pool.query(dataQuery, [
+    minDiscountPercent,
+    pageLimit,
+    offset,
+  ]);
+
+  const countQuery = `
+    SELECT COUNT(DISTINCT p.id)::int AS count
+    FROM (
+      SELECT p.id
+      FROM products p
+      LEFT JOIN product_variants pv ON p.id = pv.product_id
+      LEFT JOIN variant_pricing vp ON pv.id = vp.variant_id
+      WHERE vp.mrp > vp.selling_price
+        AND ((vp.mrp - vp.selling_price) * 100.0 / vp.mrp) >= $1
+      GROUP BY p.id
+      HAVING AVG((vp.mrp - vp.selling_price) * 100.0 / vp.mrp) >= $1
+    ) as discounted_products
+  `;
+
+  const countResult = await pool.query(countQuery, [minDiscountPercent]);
   const totalItems = countResult.rows[0].count;
   const totalPages = Math.ceil(totalItems / pageLimit);
 

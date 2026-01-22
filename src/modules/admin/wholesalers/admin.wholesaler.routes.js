@@ -2,10 +2,14 @@ import express from "express";
 
 import {
   createWholesalerController,
+  getWholesalerByIdController,
+  findAllWholesalersController,
   createWholesalerDocumentsController,
   updateWholesalerStatusOnlyController,
   updateWholesalerDocumentsStatusController,
   verifyWholesalerController,
+  deleteWholesalerByIdController,
+  editWholesalerBasicAndDocumentsController
 } from "./admin.wholesaler.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -18,8 +22,8 @@ import {
   createWholesalerDocumentsSchema,
   updateWholesalerStatusSchema,
   updateWholesalerDocumentsStatusSchema,
-  wholesalerIdParamSchema,
-  verifyWholesalerSchema
+  verifyWholesalerSchema,
+  editWholesalerBasicAndDocumentsSchema,
 } from "./admin.wholesaler.schema.js";
 
 const router = express.Router();
@@ -32,6 +36,23 @@ router.post(
   validate(createWholesalerSchema),
   createWholesalerController
 );
+
+/* ================= GET WHOLESALER BY ID ================= */
+router.get(
+  "/:wholesalerId",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  getWholesalerByIdController
+);    
+
+/* ================= GET ALL WHOLESALERS ================= */
+router.get(
+  "/",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  findAllWholesalersController
+);  
+
 
 /* ================= STAGE 2 — UPLOAD DOCUMENTS ================= */
 router.post(
@@ -67,6 +88,21 @@ router.patch(
   authorize(ROLES.ADMIN),
   validate(verifyWholesalerSchema),
   verifyWholesalerController
+);
+
+router.delete(
+  "/:wholesalerId",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  deleteWholesalerByIdController    
+)
+
+router.patch(
+  "/:wholesalerId/edit-profile",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  validate(editWholesalerBasicAndDocumentsSchema),
+  editWholesalerBasicAndDocumentsController
 );
 
 export default router;

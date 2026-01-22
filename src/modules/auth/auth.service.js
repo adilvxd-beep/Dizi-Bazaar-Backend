@@ -1,4 +1,4 @@
-import { createUser, findUserByPhone } from "./auth.repository.js";
+import { createUser, findUserByPhone, signupWholesalerLite } from "./auth.repository.js";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/index.js";
 
@@ -26,4 +26,24 @@ export const loginUser = async (userData) => {
       role: user.role,
     },
   };
+};
+
+export const signupWholesalerLiteService = async (data) => {
+  try {
+    return await signupWholesalerLite(data);
+  } catch (error) {
+
+    if (error.message === "USER_ALREADY_EXISTS") {
+      error.statusCode = 409;
+      throw error;
+    }
+
+    if (error.code === "23503") {
+      const err = new Error("INVALID_BUSINESS_CATEGORY");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error;
+  }
 };

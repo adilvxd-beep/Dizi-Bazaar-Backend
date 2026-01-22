@@ -10,10 +10,7 @@ export const verificationStatus = z.enum([
 
 export const documentStatus = verificationStatus;
 
-/* ================= PARAM ================= */
-export const wholesalerIdParamSchema = z.object({
-  wholesalerId: z.coerce.number().int().positive("Invalid wholesaler ID"),
-});
+
 
 /* ================= STAGE 1 CREATE ================= */
 export const createWholesalerSchema = z.object({
@@ -80,3 +77,59 @@ export const updateWholesalerDocumentsStatusSchema = z
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one document status must be provided",
   });
+
+
+  /* ================= EDIT WHOLESALER (BASIC + DOCUMENTS) ================= */
+export const editWholesalerBasicAndDocumentsSchema = z
+  .object({
+    user: z
+      .object({
+        username: z.string().min(3).optional(),
+        email: z.string().email().optional(),
+        phone: z.string().regex(/^[6-9][0-9]{9}$/).optional(),
+      })
+      .optional(),
+
+    wholesaler: z
+      .object({
+        businessName: z.string().min(3).optional(),
+        businessCategoryId: z.number().optional(),
+        ownerName: z.string().min(3).optional(),
+        businessAddress: z.string().min(5).optional(),
+        billingAddress: z.string().min(5).optional(),
+
+        alternatePhoneNumber: z.string().optional(),
+        websiteUrl: z.string().optional(),
+
+        gstNumber: z.string().optional(),
+        panNumber: z.string().optional(),
+        aadharNumber: z.string().optional(),
+        msmeNumber: z.string().optional(),
+
+        yearsInBusiness: z.number().optional(),
+        numberOfEmployees: z.number().optional(),
+        annualTurnover: z.number().optional(),
+
+        tradeLicenseNumber: z.string().optional(),
+      })
+      .optional(),
+
+    documents: z
+      .object({
+        gstCertificateUrl: z.string().url().optional(),
+        panCardUrl: z.string().url().optional(),
+        aadharCardUrl: z.string().url().optional(),
+        bankStatementUrl: z.string().url().optional(),
+        businessProofUrl: z.string().url().optional(),
+        cancelledChequeUrl: z.string().url().optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (data) =>
+      data.user || data.wholesaler || data.documents,
+    {
+      message:
+        "At least one of user, wholesaler, or documents must be provided",
+    }
+  );

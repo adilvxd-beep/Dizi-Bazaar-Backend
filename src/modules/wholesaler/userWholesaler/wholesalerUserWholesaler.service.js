@@ -1,6 +1,7 @@
 import {
   createWholesaler,
   createWholesalerDocuments,
+  updateWholesalerAndDocuments,
 } from "./wholesalerUserWholesaler.repository.js";
 
 export const createWholesalerService = async (data, user) => {
@@ -65,6 +66,20 @@ export const createWholesalerDocumentsService = async (data, user) => {
       throw error;
     }
 
+    error.statusCode = error.statusCode || 500;
+    throw error;
+  }
+};
+
+//update wholesaler and documents
+export const updateWholesalerService = async (data, user) => {
+  try {
+    return await updateWholesalerAndDocuments(data, user);
+  } catch (error) {
+    if (error.code === "23505") {
+      error.statusCode = 409;
+      error.message = "DUPLICATE_VALUE";
+    }
     error.statusCode = error.statusCode || 500;
     throw error;
   }

@@ -1,6 +1,6 @@
 import express from "express";
-import { createWholesalerController, createWholesalerDocumentsController } from "./wholesalerUserWholesaler.controller.js";
-import { createWholesalerSchema } from "./wholesalerUserWholesaler.schema.js";
+import { createWholesalerController, createWholesalerDocumentsController, updateWholesalerController } from "./wholesalerUserWholesaler.controller.js";
+import { createWholesalerSchema, updateWholesalerSchema } from "./wholesalerUserWholesaler.schema.js";
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
 import { validate } from "../../../shared/middlewares/validate.middleware.js";
 
@@ -18,5 +18,15 @@ router.post(
   authenticate,
   createWholesalerDocumentsController
 );
+
+
+router.patch(
+  "/",
+  authenticate,
+  validate(updateWholesalerSchema),
+  updateWholesalerController
+);
+  
+; 
 
 export default router;

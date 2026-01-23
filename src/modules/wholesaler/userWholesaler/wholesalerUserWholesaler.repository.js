@@ -130,6 +130,7 @@ const { phone, business_category_id } = userRes.rows[0];
   }
 };
 
+//create wholesaler documents
 export const createWholesalerDocuments = async (data, user) => {
   const client = await pool.connect();
 
@@ -216,6 +217,132 @@ export const createWholesalerDocuments = async (data, user) => {
     await client.query("COMMIT");
 
     return rows[0];
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+//update wholesaler and documents
+export const updateWholesalerAndDocuments = async (data, user) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id: userId } = user;
+
+    /* =========================
+       GET WHOLESALER (TOKEN BASED)
+    ========================= */
+    const wholesalerRes = await client.query(
+      `
+      SELECT id
+      FROM wholesalers
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    if (wholesalerRes.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    const wholesalerId = wholesalerRes.rows[0].id;
+
+    /* =========================
+       UPDATE WHOLESALER DETAILS
+    ========================= */
+    const wholesalerFields = [];
+    const wholesalerValues = [];
+    let idx = 1;
+
+    const mapWholesaler = {
+      businessName: "business_name",
+      ownerName: "owner_name",
+      alternatePhoneNumber: "alternate_phone_number",
+      email: "email",
+      websiteUrl: "website_url",
+      businessAddress: "business_address",
+      billingAddress: "billing_address",
+      gstNumber: "gst_number",
+      panNumber: "pan_number",
+      aadharNumber: "aadhar_number",
+      msmeNumber: "msme_number",
+      yearsInBusiness: "years_in_business",
+      numberOfEmployees: "number_of_employees",
+      annualTurnover: "annual_turnover",
+      tradeLicenseNumber: "trade_license_number"
+    };
+
+    for (const key in mapWholesaler) {
+      if (data[key] !== undefined) {
+        wholesalerFields.push(
+          `${mapWholesaler[key]} = $${idx++}`
+        );
+        wholesalerValues.push(data[key]);
+      }
+    }
+
+    if (wholesalerFields.length > 0) {
+      await client.query(
+        `
+        UPDATE wholesalers
+        SET ${wholesalerFields.join(", ")},
+            updated_at = NOW()
+        WHERE id = $${idx}
+        `,
+        [...wholesalerValues, wholesalerId]
+      );
+    }
+
+    /* =========================
+       UPDATE DOCUMENTS (IF ANY)
+    ========================= */
+    const docFields = [];
+    const docValues = [];
+    let dIdx = 1;
+
+    const mapDocs = {
+      gstCertificateUrl: "gst_certificate_url",
+      panCardUrl: "pan_card_url",
+      aadharCardUrl: "aadhar_card_url",
+      bankStatementUrl: "bank_statement_url",
+      businessProofUrl: "business_proof_url",
+      cancelledChequeUrl: "cancelled_cheque_url"
+    };
+
+    for (const key in mapDocs) {
+      if (data[key] !== undefined) {
+        docFields.push(
+          `${mapDocs[key]} = $${dIdx++},
+           ${mapDocs[key].replace("_url", "_status")} = 'pending'`
+        );
+        docValues.push(data[key]);
+      }
+    }
+
+    if (docFields.length > 0) {
+      await client.query(
+        `
+        UPDATE wholesaler_documents
+        SET ${docFields.join(", ")},
+            updated_at = NOW()
+        WHERE wholesaler_id = $${dIdx}
+        `,
+        [...docValues, wholesalerId]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      updated: true
+    };
 
   } catch (error) {
     await client.query("ROLLBACK");

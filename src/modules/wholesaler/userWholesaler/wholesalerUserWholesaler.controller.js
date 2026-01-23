@@ -1,4 +1,4 @@
-import { createWholesalerService, createWholesalerDocumentsService, } from "./wholesalerUserWholesaler.service.js";
+import { createWholesalerService, createWholesalerDocumentsService, updateWholesalerService} from "./wholesalerUserWholesaler.service.js";
 import ApiResponse from "../../../shared/utils/ApiResponse.js";
 
 export const createWholesalerController = async (req, res, next) => {
@@ -30,6 +30,23 @@ export const createWholesalerDocumentsController = async (req, res, next) => {
         201,
         result,
         "Wholesaler documents submitted successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const updateWholesalerController = async (req, res, next) => {
+  try {
+    const result = await updateWholesalerService(req.body, req.user);
+
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        result,
+        "Wholesaler updated successfully"
       )
     );
   } catch (error) {

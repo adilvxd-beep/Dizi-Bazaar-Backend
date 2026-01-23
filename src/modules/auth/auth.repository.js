@@ -15,7 +15,7 @@ export const findUserByPhone = async (phone) => {
   return result.rows[0];
 };
 
-export const signupWholesalerLite = async ({
+export const userSignupRepo = async ({
   username,
   phone,
   businessCategoryId,
@@ -27,30 +27,32 @@ export const signupWholesalerLite = async ({
     await client.query("BEGIN");
 
     /* =========================
-       BASIC SAFETY CHECKS
+       BASIC VALIDATION
     ========================= */
     if (!username || !phone || !businessCategoryId || !role) {
-      throw new Error("MISSING_REQUIRED_FIELDS");
-    }
-
-    if (role !== "wholesaler") {
-      throw new Error("INVALID_ROLE");
+      return {
+        success: false,
+        message: "Required fields are missing"
+      };
     }
 
     /* =========================
-       CHECK IF USER EXISTS (PHONE / USERNAME)
+       CHECK IF USER EXISTS (PHONE)
     ========================= */
     const existingUser = await client.query(
       `
       SELECT id
       FROM users
-      WHERE phone = $1 OR username = $2
+      WHERE phone = $1
       `,
-      [phone, username]
+      [phone]
     );
 
     if (existingUser.rowCount > 0) {
-      throw new Error("USER_ALREADY_EXISTS");
+      return {
+        success: false,
+        message: "User already exists with this phone number"
+      };
     }
 
     /* =========================
@@ -58,32 +60,25 @@ export const signupWholesalerLite = async ({
     ========================= */
     const userRes = await client.query(
       `
-      INSERT INTO users (username, phone, role)
-      VALUES ($1, $2, $3)
-      RETURNING id, username, phone, role
-      `,
-      [username, phone, role]
-    );
-
-    const userId = userRes.rows[0].id;
-
-    /* =========================
-       CREATE WHOLESALER (MINIMAL)
-    ========================= */
-    const wholesalerRes = await client.query(
-      `
-      INSERT INTO wholesalers (
-        user_id,
-        phone_number,
-        business_category_id,
-        status
+      INSERT INTO users (
+        username,
+        phone,
+        role,
+        business_category_id
       )
-      VALUES ($1, $2, $3, 'pending')
-      RETURNING id, status
+      VALUES ($1, $2, $3, $4)
+      RETURNING 
+        id,
+        username,
+        phone,
+        role,
+        business_category_id,
+        is_verified
       `,
       [
-        userId,
+        username.trim(),
         phone,
+        role.trim().toLowerCase(),
         businessCategoryId
       ]
     );
@@ -91,15 +86,19 @@ export const signupWholesalerLite = async ({
     await client.query("COMMIT");
 
     return {
-      userId,
-      username: userRes.rows[0].username,
-      wholesalerId: wholesalerRes.rows[0].id,
-      status: wholesalerRes.rows[0].status
+      success: true,
+      message: "User registered successfully",
+      user: userRes.rows[0]
     };
 
   } catch (error) {
     await client.query("ROLLBACK");
-    throw error;
+
+    return {
+      success: false,
+      message: "Failed to register user",
+      error: error.message
+    };
   } finally {
     client.release();
   }

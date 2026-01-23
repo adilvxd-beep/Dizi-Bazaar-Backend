@@ -137,7 +137,6 @@ export const createWholesalerDocuments = async (data, user) => {
     await client.query("BEGIN");
 
     const {
-      wholesalerId,
       gstCertificateUrl,
       panCardUrl,
       aadharCardUrl,
@@ -149,20 +148,22 @@ export const createWholesalerDocuments = async (data, user) => {
     const { id: userId } = user;
 
     /* =========================
-       VERIFY WHOLESALER BELONGS TO USER
+       FETCH WHOLESALER ID FROM USER
     ========================= */
     const wholesalerRes = await client.query(
       `
       SELECT id
       FROM wholesalers
-      WHERE id = $1 AND user_id = $2
+      WHERE user_id = $1
       `,
-      [wholesalerId, userId]
+      [userId]
     );
 
     if (wholesalerRes.rowCount === 0) {
       throw new Error("WHOLESALER_NOT_FOUND");
     }
+
+    const wholesalerId = wholesalerRes.rows[0].id;
 
     /* =========================
        PREVENT DUPLICATE DOCUMENTS
@@ -223,5 +224,6 @@ export const createWholesalerDocuments = async (data, user) => {
     client.release();
   }
 };
+
 
 

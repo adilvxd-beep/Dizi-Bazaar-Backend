@@ -3,10 +3,6 @@ import ApiResponse from "../../../shared/utils/ApiResponse.js";
 
 export const createWholesalerController = async (req, res, next) => {
   try {
-    // console.log("👉 CONTROLLER HIT");
-    // console.log("👉 req.user:", req.user);
-    // console.log("👉 req.body:", req.body);
-
     const result = await createWholesalerService(req.body, req.user);
 
     return res.status(201).json(
@@ -24,13 +20,8 @@ export const createWholesalerController = async (req, res, next) => {
 
 export const createWholesalerDocumentsController = async (req, res, next) => {
   try {
-    const { wholesalerId } = req.params;
-
     const result = await createWholesalerDocumentsService(
-      {
-        ...req.body,
-        wholesalerId: Number(wholesalerId)
-      },
+      req.body,
       req.user
     );
 
@@ -45,3 +36,4 @@ export const createWholesalerDocumentsController = async (req, res, next) => {
     next(error);
   }
 };
+

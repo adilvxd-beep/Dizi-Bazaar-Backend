@@ -14,10 +14,9 @@ router.post("/",
 );
 
 router.post(
-  "/:wholesalerId/documents",
+  "/documents",
   authenticate,
   createWholesalerDocumentsController
 );
-
 
 export default router;

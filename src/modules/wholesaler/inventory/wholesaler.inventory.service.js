@@ -20,6 +20,8 @@ export const getStockByVariant = async (variantId, userId) => {
 };
 
 export const saveStockWithPricing = async (data, userId) => {
+  data.city = "noida";
+  data.state = "uttar pradesh";
   return await upsertStockWithPricing({
     ...data,
     userId,

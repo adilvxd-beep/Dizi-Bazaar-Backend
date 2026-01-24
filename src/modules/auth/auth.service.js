@@ -1,7 +1,7 @@
 import {
   createUser,
   findUserByPhone,
-  userSignupRepo
+  userSignupRepo,
 } from "./auth.repository.js";
 
 import { generateToken } from "../../shared/utils/jwtToken.js";
@@ -15,7 +15,7 @@ export const registerUser = async (userData) => {
   const newUser = await createUser({
     username,
     phone,
-    role
+    role,
   });
 
   return newUser;
@@ -52,7 +52,7 @@ export const loginUser = async (userData) => {
   ========================= */
   const token = generateToken({
     id: user.id,
-    role: user.role
+    role: user.role,
   });
 
   return {
@@ -61,8 +61,8 @@ export const loginUser = async (userData) => {
       id: user.id,
       username: user.username,
       phone: user.phone,
-      role: user.role
-    }
+      role: user.role,
+    },
   };
 };
 
@@ -72,9 +72,7 @@ export const loginUser = async (userData) => {
 export const userSignupService = async (data) => {
   try {
     return await userSignupRepo(data);
-
   } catch (error) {
-
     if (error.message === "USER_ALREADY_EXISTS") {
       error.statusCode = 409;
       throw error;
@@ -100,13 +98,7 @@ export const userSignupService = async (data) => {
    VERIFY OTP + SIGNUP
 ========================= */
 export const verifyOtpAndSignupService = async (data) => {
-  const {
-    otp,
-    username,
-    phone,
-    businessCategoryId,
-    role
-  } = data;
+  const { otp, phone, businessCategoryId, role } = data;
 
   if (!otp) {
     throw new Error("OTP_REQUIRED");
@@ -117,22 +109,31 @@ export const verifyOtpAndSignupService = async (data) => {
     throw new Error("INVALID_OTP");
   }
 
+  // Generate random username: role + 3 digits + 1 alphabet
+  const generateUsername = (role) => {
+    const digits = Math.floor(100 + Math.random() * 900); // 3 digits
+    const alphabet = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
+    return `${role}${digits}${alphabet}`;
+  };
+
+  const username = generateUsername(role);
+
   // OTP valid → create user
   const user = await userSignupRepo({
     username,
     phone,
     businessCategoryId,
-    role
+    role,
   });
 
   // OPTIONAL: auto-login after signup
   const token = generateToken({
     id: user.id,
-    role: user.role
+    role: user.role,
   });
 
   return {
     user,
-    token
+    token,
   };
 };

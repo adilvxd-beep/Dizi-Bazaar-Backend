@@ -70,6 +70,7 @@ export const upsertStockWithPricing = async (data) => {
     variantId,
     userId,
     stockQuantity,
+    reservedQuantity = 0,
     costPrice,
     sellingPrice,
     mrp,
@@ -85,14 +86,15 @@ export const upsertStockWithPricing = async (data) => {
 
     // Upsert stock
     const stockResult = await client.query(
-      `INSERT INTO variant_stock (variant_id, user_id, stock_quantity)
-      VALUES ($1, $2, $3)
+      `INSERT INTO variant_stock (variant_id, user_id, stock_quantity, reserved_quantity)
+      VALUES ($1, $2, $3, $4)
       ON CONFLICT (variant_id, user_id) 
       DO UPDATE SET 
         stock_quantity = $3,
+        reserved_quantity = $4,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *`,
-      [variantId, userId, stockQuantity],
+      [variantId, userId, stockQuantity, reservedQuantity],
     );
 
     // Upsert pricing

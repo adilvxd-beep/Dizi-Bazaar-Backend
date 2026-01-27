@@ -7,7 +7,11 @@ export const validate = (schema) => {
       schema.parse(req.body);
       next();
     } catch (error) {
-      next(new ApiError(400, error.message));
+      if (error instanceof z.ZodError) {
+        const message = error.issues.map((issue) => issue.message).join(", ");
+        return next(new ApiError(400, message));
+      }
+      next(new ApiError(500, error.message || "Internal Server Error"));
     }
   };
 };

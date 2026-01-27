@@ -40,10 +40,11 @@ export const updateStockReservedQuantity = async (
   return await updateReservedQuantity(variantId, userId, reservedQuantity);
 };
 
-export const updateVariantPricing = async (data, userId) => {
+export const updateVariantPricing = async (data, userId, variantId) => {
   return await updatePricing({
     ...data,
     userId,
+    variantId,
   });
 };
 

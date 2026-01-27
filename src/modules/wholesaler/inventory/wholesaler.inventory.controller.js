@@ -68,7 +68,11 @@ export const updateReservedQuantity = async (req, res, next) => {
 
 export const updatePricing = async (req, res, next) => {
   try {
-    const result = await updateVariantPricing(req.body, req.user.id);
+    const result = await updateVariantPricing(
+      req.body,
+      req.user.id,
+      req.params.variantId,
+    );
     res.json(new ApiResponse(200, result));
   } catch (error) {
     next(error);

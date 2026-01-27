@@ -1,25 +1,42 @@
 import pool from "../../shared/db/postgres.js";
 
+/* =========================
+   CREATE USER (SIMPLE)
+========================= */
 export const createUser = async (userData) => {
   const { username, phone, role } = userData;
+
   const result = await pool.query(
-    "INSERT INTO users (username, phone, role) VALUES ($1, $2, $3) RETURNING id, username, phone, role",
-    [username, phone, role]
+    `
+    INSERT INTO users (username, phone, role)
+    VALUES ($1, $2, $3)
+    RETURNING id, username, phone, role
+    `,
+    [username, phone, role],
   );
-  return result.rows[0];
-};
-export const findUserByPhone = async (phone) => {
-  const result = await pool.query("SELECT * FROM users WHERE phone = $1", [
-    phone,
-  ]);
+
   return result.rows[0];
 };
 
+/* =========================
+   FIND USER BY PHONE
+========================= */
+export const findUserByPhone = async (phone) => {
+  const result = await pool.query(`SELECT * FROM users WHERE phone = $1`, [
+    phone,
+  ]);
+
+  return result.rows[0];
+};
+
+/* =========================
+   USER SIGNUP REPO
+========================= */
 export const userSignupRepo = async ({
   username,
   phone,
   businessCategoryId,
-  role
+  role,
 }) => {
   const client = await pool.connect();
 
@@ -30,35 +47,25 @@ export const userSignupRepo = async ({
        BASIC VALIDATION
     ========================= */
     if (!username || !phone || !businessCategoryId || !role) {
-      return {
-        success: false,
-        message: "Required fields are missing"
-      };
+      throw new Error("Required fields are missing");
     }
 
     /* =========================
-       CHECK IF USER EXISTS (PHONE)
+       CHECK IF USER EXISTS
     ========================= */
     const existingUser = await client.query(
-      `
-      SELECT id
-      FROM users
-      WHERE phone = $1
-      `,
-      [phone]
+      `SELECT id FROM users WHERE phone = $1`,
+      [phone],
     );
 
     if (existingUser.rowCount > 0) {
-      return {
-        success: false,
-        message: "User already exists with this phone number"
-      };
+      throw new Error("User already exists with this phone number");
     }
 
     /* =========================
        CREATE USER
     ========================= */
-    const userRes = await client.query(
+    const result = await client.query(
       `
       INSERT INTO users (
         username,
@@ -75,30 +82,15 @@ export const userSignupRepo = async ({
         business_category_id,
         is_verified
       `,
-      [
-        username.trim(),
-        phone,
-        role.trim().toLowerCase(),
-        businessCategoryId
-      ]
+      [username.trim(), phone, role.trim().toLowerCase(), businessCategoryId],
     );
 
     await client.query("COMMIT");
 
-    return {
-      success: true,
-      message: "User registered successfully",
-      user: userRes.rows[0]
-    };
-
+    return result.rows[0];
   } catch (error) {
     await client.query("ROLLBACK");
-
-    return {
-      success: false,
-      message: "Failed to register user",
-      error: error.message
-    };
+    throw error;
   } finally {
     client.release();
   }

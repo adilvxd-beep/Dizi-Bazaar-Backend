@@ -1,0 +1,9 @@
+import { z } from "zod";
+
+export const loginSchema = z.object({
+  phone: z.string().min(10).max(15),
+  otp: z.string().min(4).max(4),
+});
+export const requestOtpSchema = z.object({
+  phone: z.string().min(10).max(15),
+});

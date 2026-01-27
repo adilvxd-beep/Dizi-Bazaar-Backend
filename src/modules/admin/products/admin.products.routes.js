@@ -51,7 +51,12 @@ const router = express.Router();
 
 /* ==================== PRODUCT ROUTES ==================== */
 
-router.get("/", authenticate, authorize(ROLES.ADMIN), getProducts);
+router.get(
+  "/",
+  authenticate,
+  authorize(ROLES.ADMIN, ROLES.WHOLESALER),
+  getProducts,
+);
 
 router.get("/search", authenticate, authorize(ROLES.ADMIN), searchProducts);
 
@@ -59,21 +64,21 @@ router.get(
   "/price-stats",
   authenticate,
   authorize(ROLES.ADMIN),
-  getProductsPriceStats
+  getProductsPriceStats,
 );
 
 router.get(
   "/category/:categoryId",
   authenticate,
   authorize(ROLES.ADMIN),
-  getProductsByCategoryController
+  getProductsByCategoryController,
 );
 
 router.get(
   "/:id",
   authenticate,
   authorize(ROLES.ADMIN),
-  getProductByIdController
+  getProductByIdController,
 );
 
 router.post(
@@ -81,7 +86,7 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(createProductSchema),
-  createProduct
+  createProduct,
 );
 
 router.post("/full", authenticate, authorize(ROLES.ADMIN), createFullProduct);
@@ -90,14 +95,14 @@ router.patch(
   "/full/:id",
   authenticate,
   authorize(ROLES.ADMIN),
-  updateFullProduct
+  updateFullProduct,
 );
 
 router.delete(
   "/full/:id",
   authenticate,
   authorize(ROLES.ADMIN),
-  deleteFullProduct
+  deleteFullProduct,
 );
 
 router.patch(
@@ -105,14 +110,14 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(updateProductSchema),
-  updateProduct
+  updateProduct,
 );
 
 router.patch(
   "/:id/toggle-status",
   authenticate,
   authorize(ROLES.ADMIN),
-  toggleProductStatus
+  toggleProductStatus,
 );
 
 router.delete("/:id", authenticate, authorize(ROLES.ADMIN), deleteProduct);
@@ -122,22 +127,22 @@ router.delete("/:id", authenticate, authorize(ROLES.ADMIN), deleteProduct);
 router.get(
   "/:productId/variants",
   authenticate,
-  authorize(ROLES.ADMIN),
-  getVariantsByProduct
+  authorize(ROLES.ADMIN, ROLES.WHOLESALER),
+  getVariantsByProduct,
 );
 
 router.get(
   "/variants/:id",
   authenticate,
   authorize(ROLES.ADMIN),
-  getVariantByIdController
+  getVariantByIdController,
 );
 
 router.get(
   "/variants/sku/:sku",
   authenticate,
   authorize(ROLES.ADMIN),
-  getVariantBySKUController
+  getVariantBySKUController,
 );
 
 router.post(
@@ -145,7 +150,7 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(createVariantSchema),
-  createVariant
+  createVariant,
 );
 
 router.patch(
@@ -153,14 +158,14 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(updateVariantSchema),
-  updateVariant
+  updateVariant,
 );
 
 router.delete(
   "/variants/:id",
   authenticate,
   authorize(ROLES.ADMIN),
-  deleteVariant
+  deleteVariant,
 );
 
 /* ==================== VARIANT IMAGES ==================== */
@@ -169,7 +174,7 @@ router.get(
   "/variants/:variantId/images",
   authenticate,
   authorize(ROLES.ADMIN),
-  getVariantImagesController
+  getVariantImagesController,
 );
 
 router.post(
@@ -177,7 +182,7 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(addVariantImagesSchema),
-  addVariantImages
+  addVariantImages,
 );
 
 router.patch(
@@ -185,14 +190,14 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(updateVariantImageOrderSchema),
-  updateImageOrder
+  updateImageOrder,
 );
 
 router.delete(
   "/variant-images/:imageId",
   authenticate,
   authorize(ROLES.ADMIN),
-  deleteVariantImage
+  deleteVariantImage,
 );
 
 /* ==================== PRICING ==================== */
@@ -201,14 +206,14 @@ router.get(
   "/pricing/user/:userId",
   authenticate,
   authorize(ROLES.ADMIN),
-  getUserPricing
+  getUserPricing,
 );
 
 router.get(
   "/pricing/variant/:variantId",
   authenticate,
   authorize(ROLES.ADMIN),
-  getVariantPricing
+  getVariantPricing,
 );
 
 router.post(
@@ -216,7 +221,7 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(setVariantPricingSchema),
-  setVariantPricing
+  setVariantPricing,
 );
 
 router.post(
@@ -224,14 +229,14 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(bulkVariantPricingSchema),
-  bulkSetVariantPricing
+  bulkSetVariantPricing,
 );
 
 router.delete(
   "/pricing/:variantId/:userId",
   authenticate,
   authorize(ROLES.ADMIN),
-  deleteVariantPricing
+  deleteVariantPricing,
 );
 
 /* ==================== COMPLETE PRODUCT ==================== */
@@ -240,7 +245,7 @@ router.get(
   "/:productId/complete",
   authenticate,
   authorize(ROLES.ADMIN),
-  getCompleteProductController
+  getCompleteProductController,
 );
 
 export default router;

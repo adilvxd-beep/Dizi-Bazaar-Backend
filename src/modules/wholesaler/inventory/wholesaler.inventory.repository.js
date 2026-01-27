@@ -8,7 +8,15 @@ export const findStockByUserId = async (userId) => {
       vs.user_id,
       vs.stock_quantity,
       vs.reserved_quantity,
-      vs.stock_quantity - vs.reserved_quantity as available_quantity,
+      (vs.stock_quantity - vs.reserved_quantity) as available_quantity,
+
+      -- Stock status
+      CASE 
+        WHEN (vs.stock_quantity - vs.reserved_quantity) = 0 THEN 'out_of_stock'
+        WHEN (vs.stock_quantity - vs.reserved_quantity) <= 10 THEN 'low_stock'
+        ELSE 'in_stock'
+      END as stock_status,
+
       vs.created_at,
       vs.updated_at,
       pv.variant_name,
@@ -32,11 +40,14 @@ export const findStockByUserId = async (userId) => {
     FROM variant_stock vs
     JOIN product_variants pv ON vs.variant_id = pv.id
     JOIN products p ON pv.product_id = p.id
-    LEFT JOIN variant_pricing vp ON vp.variant_id = vs.variant_id AND vp.user_id = vs.user_id
+    LEFT JOIN variant_pricing vp 
+      ON vp.variant_id = vs.variant_id 
+      AND vp.user_id = vs.user_id
     WHERE vs.user_id = $1
     ORDER BY p.product_name, pv.variant_name`,
     [userId],
   );
+
   return result.rows;
 };
 

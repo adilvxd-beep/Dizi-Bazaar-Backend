@@ -160,6 +160,21 @@ export const updateStockQuantity = async (variantId, userId, stockQuantity) => {
   return result.rows[0] || null;
 };
 
+export const updateReservedQuantity = async (
+  variantId,
+  userId,
+  reservedQuantity,
+) => {
+  const result = await pool.query(
+    `UPDATE variant_stock 
+    SET reserved_quantity = $3, updated_at = CURRENT_TIMESTAMP
+    WHERE variant_id = $1 AND user_id = $2 
+    RETURNING *`,
+    [variantId, userId, reservedQuantity],
+  );
+  return result.rows[0] || null;
+};
+
 export const updatePricing = async (data) => {
   const {
     variantId,

@@ -3,6 +3,7 @@ import {
   findStockByVariantAndUser,
   upsertStockWithPricing,
   updateStockQuantity,
+  updateReservedQuantity,
   updatePricing,
   deleteStockAndPricing,
   findLowStockByUserId,
@@ -30,6 +31,13 @@ export const saveStockWithPricing = async (data, userId) => {
 
 export const updateStock = async (variantId, quantity, userId) => {
   return await updateStockQuantity(variantId, userId, quantity);
+};
+export const updateStockReservedQuantity = async (
+  variantId,
+  reservedQuantity,
+  userId,
+) => {
+  return await updateReservedQuantity(variantId, userId, reservedQuantity);
 };
 
 export const updateVariantPricing = async (data, userId) => {

@@ -5,6 +5,7 @@ import {
   getStockByVariant,
   saveStockWithPricing,
   updateStock,
+  updateStockReservedQuantity,
   updateVariantPricing,
   deleteStock,
   getLowStock,
@@ -45,6 +46,18 @@ export const updateStockQuantity = async (req, res, next) => {
     const result = await updateStock(
       req.params.variantId,
       req.body.stockQuantity,
+      req.user.id,
+    );
+    res.json(new ApiResponse(200, result));
+  } catch (error) {
+    next(error);
+  }
+};
+export const updateReservedQuantity = async (req, res, next) => {
+  try {
+    const result = await updateStockReservedQuantity(
+      req.params.variantId,
+      req.body.reservedQuantity,
       req.user.id,
     );
     res.json(new ApiResponse(200, result));

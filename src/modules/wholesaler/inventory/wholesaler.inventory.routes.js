@@ -8,6 +8,7 @@ import {
   getStockVariant,
   saveStock,
   updateStockQuantity,
+  updateReservedQuantity,
   updatePricing,
   removeStock,
   lowStock,
@@ -47,6 +48,12 @@ router.patch(
   authenticate,
   authorize(ROLES.WHOLESALER),
   updateStockQuantity,
+);
+router.patch(
+  "/:variantId/reserved-quantity",
+  authenticate,
+  authorize(ROLES.WHOLESALER),
+  updateReservedQuantity,
 );
 
 router.patch(

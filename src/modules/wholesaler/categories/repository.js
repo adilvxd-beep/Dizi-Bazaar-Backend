@@ -64,24 +64,30 @@ export const findAllCategories = async (userId, query = {}) => {
 
   // Data query
   const dataQuery = `
-    SELECT
-      c.id,
-      c.name,
-      c.image_url,
-      c.status,
-      c.created_at,
-      c.updated_at,
-      bc.id     AS business_category_id,
-      bc.name   AS business_category_name,
-      bc.status AS business_category_status
-    FROM categories c
-    JOIN business_categories bc
-      ON bc.id = c.business_category_id
-    ${whereClause}
-    ORDER BY ${sortColumn} ${sortOrder}
-    LIMIT $${values.length + 1}
-    OFFSET $${values.length + 2};
-  `;
+  SELECT
+    c.id,
+    c.name,
+    c.image_url,
+    c.status,
+    c.created_at,
+    c.updated_at,
+    bc.id     AS business_category_id,
+    bc.name   AS business_category_name,
+    bc.status AS business_category_status,
+    COUNT(p.id)::int AS product_count
+  FROM categories c
+  JOIN business_categories bc
+    ON bc.id = c.business_category_id
+  LEFT JOIN products p
+    ON p.category_id = c.id
+  ${whereClause}
+  GROUP BY
+    c.id,
+    bc.id
+  ORDER BY ${sortColumn} ${sortOrder}
+  LIMIT $${values.length + 1}
+  OFFSET $${values.length + 2};
+`;
 
   const dataValues = [...values, pageLimit, offset];
   const { rows } = await pool.query(dataQuery, dataValues);

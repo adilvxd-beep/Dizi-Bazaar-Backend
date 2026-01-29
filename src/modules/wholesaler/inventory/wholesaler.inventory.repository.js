@@ -1,21 +1,80 @@
 import pool from "../../../shared/db/postgres.js";
 
-export const findStockByUserId = async (userId) => {
-  const result = await pool.query(
-    `SELECT 
+export const findStockByUserId = async (userId, query = {}) => {
+  const {
+    search,
+    stock_status,
+    category_id,
+    page = 1,
+    limit = 10,
+    sortBy = "product_name",
+    order = "asc",
+  } = query;
+
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  const allowedSortBy = [
+    "product_name",
+    "variant_name",
+    "stock_quantity",
+    "available_quantity",
+    "created_at",
+  ];
+
+  const sortColumn = allowedSortBy.includes(sortBy) ? sortBy : "product_name";
+
+  const sortOrder = order?.toLowerCase() === "desc" ? "DESC" : "ASC";
+
+  const conditions = [`vs.user_id = $1`];
+  const values = [userId];
+
+  // Search
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(
+      `(p.product_name ILIKE $${values.length}
+        OR pv.variant_name ILIKE $${values.length}
+        OR pv.sku ILIKE $${values.length})`,
+    );
+  }
+
+  // Stock status
+  if (stock_status) {
+    if (stock_status === "out_of_stock") {
+      conditions.push(`(vs.stock_quantity - vs.reserved_quantity) = 0`);
+    } else if (stock_status === "low_stock") {
+      conditions.push(
+        `(vs.stock_quantity - vs.reserved_quantity) BETWEEN 1 AND 10`,
+      );
+    } else if (stock_status === "in_stock") {
+      conditions.push(`(vs.stock_quantity - vs.reserved_quantity) > 10`);
+    }
+  }
+
+  // Category filter
+  if (category_id) {
+    values.push(category_id);
+    conditions.push(`p.category_id = $${values.length}`);
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+  const dataQuery = `
+    SELECT 
       vs.id,
       vs.variant_id,
       vs.user_id,
       vs.stock_quantity,
       vs.reserved_quantity,
-      (vs.stock_quantity - vs.reserved_quantity) as available_quantity,
+      (vs.stock_quantity - vs.reserved_quantity) AS available_quantity,
 
-      -- Stock status
       CASE 
         WHEN (vs.stock_quantity - vs.reserved_quantity) = 0 THEN 'out_of_stock'
         WHEN (vs.stock_quantity - vs.reserved_quantity) <= 10 THEN 'low_stock'
         ELSE 'in_stock'
-      END as stock_status,
+      END AS stock_status,
 
       vs.created_at,
       vs.updated_at,
@@ -27,10 +86,10 @@ export const findStockByUserId = async (userId) => {
       pv.attribute_value_2,
       pv.attribute_name_3,
       pv.attribute_value_3,
-      p.id as product_id,
+      p.id AS product_id,
       p.product_name,
       p.main_image,
-      vp.id as pricing_id,
+      vp.id AS pricing_id,
       vp.cost_price,
       vp.selling_price,
       vp.mrp,
@@ -43,12 +102,69 @@ export const findStockByUserId = async (userId) => {
     LEFT JOIN variant_pricing vp 
       ON vp.variant_id = vs.variant_id 
       AND vp.user_id = vs.user_id
-    WHERE vs.user_id = $1
-    ORDER BY p.product_name, pv.variant_name`,
-    [userId],
-  );
+    ${whereClause}
+    ORDER BY ${
+      sortColumn === "available_quantity"
+        ? "(vs.stock_quantity - vs.reserved_quantity)"
+        : sortColumn === "variant_name"
+          ? "pv.variant_name"
+          : sortColumn === "created_at"
+            ? "vs.created_at"
+            : "p.product_name"
+    } ${sortOrder}
+    LIMIT $${values.length + 1}
+    OFFSET $${values.length + 2}
+  `;
 
-  return result.rows;
+  const dataValues = [...values, pageLimit, offset];
+  const { rows } = await pool.query(dataQuery, dataValues);
+
+  // Filtered count query (respects all filters including stock_status)
+  const countQuery = `
+    SELECT COUNT(*)::int AS count
+    FROM variant_stock vs
+    JOIN product_variants pv ON vs.variant_id = pv.id
+    JOIN products p ON pv.product_id = p.id
+    ${whereClause}
+  `;
+
+  const countResult = await pool.query(countQuery, values);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
+
+  // Total stock counts query (ALWAYS ignores stock_status and other filters, only uses user_id)
+  const totalStockCountsQuery = `
+    SELECT 
+      COUNT(*)::int AS total_count,
+      COUNT(*) FILTER (WHERE (vs.stock_quantity - vs.reserved_quantity) > 10)::int AS in_stock_count,
+      COUNT(*) FILTER (WHERE (vs.stock_quantity - vs.reserved_quantity) BETWEEN 1 AND 10)::int AS low_stock_count,
+      COUNT(*) FILTER (WHERE (vs.stock_quantity - vs.reserved_quantity) = 0)::int AS out_of_stock_count
+    FROM variant_stock vs
+    JOIN product_variants pv ON vs.variant_id = pv.id
+    JOIN products p ON pv.product_id = p.id
+    WHERE vs.user_id = $1
+  `;
+
+  const totalStockCountsResult = await pool.query(totalStockCountsQuery, [
+    userId,
+  ]);
+  const totalCount = totalStockCountsResult.rows[0].total_count;
+  const inStockCount = totalStockCountsResult.rows[0].in_stock_count;
+  const lowStockCount = totalStockCountsResult.rows[0].low_stock_count;
+  const outOfStockCount = totalStockCountsResult.rows[0].out_of_stock_count;
+
+  return {
+    items: rows,
+    totalItems,
+    totalPages,
+    currentPage,
+    stockCounts: {
+      total: totalCount,
+      inStock: inStockCount,
+      lowStock: lowStockCount,
+      outOfStock: outOfStockCount,
+    },
+  };
 };
 
 export const findStockByVariantAndUser = async (variantId, userId) => {

@@ -12,8 +12,8 @@ import {
   findStockByProductAndUser,
 } from "./wholesaler.inventory.repository.js";
 
-export const getAllStock = async (userId) => {
-  return await findStockByUserId(userId);
+export const getAllStock = async (userId, query) => {
+  return await findStockByUserId(userId, query);
 };
 
 export const getStockByVariant = async (variantId, userId) => {

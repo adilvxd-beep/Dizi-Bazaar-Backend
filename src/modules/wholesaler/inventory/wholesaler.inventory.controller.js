@@ -16,7 +16,7 @@ import {
 
 export const getStock = async (req, res, next) => {
   try {
-    const stock = await getAllStock(req.user.id);
+    const stock = await getAllStock(req.user.id, req.query);
     res.json(new ApiResponse(200, stock));
   } catch (error) {
     next(error);

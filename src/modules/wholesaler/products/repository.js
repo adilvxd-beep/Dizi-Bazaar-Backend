@@ -103,3 +103,60 @@ export const findAllProducts = async (userId, query = {}) => {
     currentPage,
   };
 };
+
+export const findProductWithVariantsById = async (userId, productId) => {
+  // Get user's business category to ensure ownership
+  const userResult = await pool.query(
+    `SELECT business_category_id FROM users WHERE id = $1`,
+    [userId],
+  );
+
+  if (!userResult.rowCount) {
+    throw new Error("User not found");
+  }
+
+  const businessCategoryId = userResult.rows[0].business_category_id;
+
+  if (!businessCategoryId) {
+    throw new Error("User has no business category");
+  }
+
+  // Fetch product details
+  const productQuery = `
+    SELECT 
+      p.*,
+      bc.name AS business_category_name,
+      c.name  AS category_name
+    FROM products p
+    LEFT JOIN business_categories bc ON p.business_category_id = bc.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.id = $1 AND p.business_category_id = $2
+  `;
+
+  const productResult = await pool.query(productQuery, [
+    productId,
+    businessCategoryId,
+  ]);
+
+  if (!productResult.rowCount) {
+    throw new Error("Product not found");
+  }
+
+  const product = productResult.rows[0];
+
+  // Fetch variants for this product
+  const variantsQuery = `
+    SELECT 
+      pv.*
+    FROM product_variants pv
+    WHERE pv.product_id = $1
+    ORDER BY pv.id ASC
+  `;
+
+  const variantsResult = await pool.query(variantsQuery, [productId]);
+
+  return {
+    ...product,
+    variants: variantsResult.rows,
+  };
+};

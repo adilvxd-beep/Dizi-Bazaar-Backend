@@ -356,3 +356,17 @@ export const getProductsByCategoryController = async (req, res, next) => {
     next(new ApiError(400, error.message));
   }
 };
+
+export const importProductsController = async (req, res, next) => {
+  try {
+    const rows = req.parsedRows;
+
+    console.log(rows);
+
+    const result = { message: "Import functionality not yet implemented" };
+
+    res.status(201).json(new ApiResponse(201, result));
+  } catch (error) {
+    next(new ApiError(400, error.message));
+  }
+};

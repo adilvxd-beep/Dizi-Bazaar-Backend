@@ -29,12 +29,16 @@ import {
   updateFullProduct,
   deleteFullProduct,
   toggleProductStatus,
+  importProductsController,
 } from "./admin.products.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
 import { authorize } from "../../../shared/middlewares/role.middleware.js";
 import { validate } from "../../../shared/middlewares/validate.middleware.js";
 import { ROLES } from "../../../shared/constants/roles.js";
+
+import { upload } from "../../../shared/middlewares/upload.middleware.js";
+import { parseSheet } from "../../../shared/middlewares/parseSheet.middleware.js";
 
 import {
   createProductSchema,
@@ -246,6 +250,15 @@ router.get(
   authenticate,
   authorize(ROLES.ADMIN),
   getCompleteProductController,
+);
+
+router.post(
+  "/bulk-import",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  upload.single("file"),
+  parseSheet,
+  importProductsController,
 );
 
 export default router;

@@ -852,8 +852,38 @@ export const importProductsService = async (
     };
   });
 
-  return await importProducts(normalizedProducts, Number(userId), {
-    state: location.state.trim(),
-    city: location.city.trim(),
-  });
+  const groupProductsWithVariants = (normalizedProducts) => {
+    const productMap = new Map();
+
+    for (const row of normalizedProducts) {
+      const { product, variant, pricing, variant_images } = row;
+
+      // Unique key per product
+      const productKey = `${product.product_name}_${product.category_id}`;
+
+      if (!productMap.has(productKey)) {
+        productMap.set(productKey, {
+          ...product,
+          variants: [],
+        });
+      }
+
+      productMap.get(productKey).variants.push({
+        ...variant,
+        pricing,
+        images: variant_images,
+      });
+    }
+
+    return Array.from(productMap.values());
+  };
+
+  return await importProducts(
+    groupProductsWithVariants(normalizedProducts),
+    Number(userId),
+    {
+      state: location.state.trim(),
+      city: location.city.trim(),
+    },
+  );
 };

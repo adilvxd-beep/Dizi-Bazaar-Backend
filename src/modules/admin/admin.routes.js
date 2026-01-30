@@ -5,11 +5,13 @@ import orderRoutes from "./order/admin.order.routes.js";
 import userRoutes from "./user/admin.user.routes.js";
 import wholesaler from "./wholesalers/admin.wholesaler.routes.js";
 import productsRoute from "./products/admin.products.routes.js";
+import jobPostsRoutes from "./job_posts/routes.js";
 
 const router = express.Router();
 
 router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
+router.use("/job-posts", jobPostsRoutes);
 router.use("/business-categories", businessCategoryRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/wholesalers", wholesaler);

@@ -27,6 +27,7 @@ import {
   updateProductWithVariantsAndSinglePrice,
   deleteProductFull,
   toggleProductStatus,
+  importProducts,
 } from "./admin.products.repository.js";
 
 // ==================== HELPER FUNCTIONS ====================
@@ -734,4 +735,125 @@ export const getProductsByCategory = async (categoryId, query) => {
   }
 
   return await findProductsByCategory(Number(categoryId), query);
+};
+
+export const importProductsService = async (
+  productsArray,
+  userId,
+  location,
+) => {
+  if (!Array.isArray(productsArray) || productsArray.length === 0) {
+    throw new Error("Products array is required");
+  }
+
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  if (!location || !location.state || !location.city) {
+    throw new Error("Valid location (state, city) is required");
+  }
+
+  let lastProductContext = null;
+
+  const normalizedProducts = productsArray.map((rawProduct, index) => {
+    const hasProductName =
+      rawProduct["Product Name*"] && rawProduct["Product Name*"].trim();
+
+    let product;
+
+    if (hasProductName) {
+      // New product row
+      product = {
+        product_name: formatName(rawProduct["Product Name*"]),
+        description: rawProduct["Description"]
+          ? rawProduct["Description"].trim()
+          : null,
+        status: rawProduct["Status*"]
+          ? rawProduct["Status*"].trim().toLowerCase()
+          : "active",
+        business_category_id: Number(rawProduct.business_category_id),
+        category_id: Number(rawProduct.category_id),
+        main_image: rawProduct["Main Image URL*"]?.trim() || null,
+      };
+
+      try {
+        validateProductData(product);
+      } catch (error) {
+        throw new Error(`Product at row ${index + 1}: ${error.message}`);
+      }
+
+      // Save context for next variant rows
+      lastProductContext = product;
+    } else {
+      // Variant-only row → inherit product
+      if (!lastProductContext) {
+        throw new Error(
+          `Row ${index + 1}: Product Name is required for the first product`,
+        );
+      }
+
+      product = lastProductContext;
+    }
+
+    const variant = {
+      variant_name: formatName(rawProduct["Variant Name*"]),
+      sku: formatSKU(rawProduct["SKU*"]),
+
+      attribute_name_1: rawProduct["Attribute 1 Name"] || null,
+      attribute_value_1: rawProduct["Attribute 1 Value"] || null,
+
+      attribute_name_2: rawProduct["Attribute 2 Name"] || null,
+      attribute_value_2: rawProduct["Attribute 2 Value"] || null,
+
+      attribute_name_3: rawProduct["Attribute 3 Name"] || null,
+      attribute_value_3: rawProduct["Attribute 3 Value"] || null,
+    };
+
+    if (!variant.variant_name || !variant.sku) {
+      throw new Error(`Variant Name and SKU are required at row ${index + 1}`);
+    }
+
+    const pricing = {
+      cost_price: parseFloat(rawProduct["Cost Price*"]),
+      selling_price: parseFloat(rawProduct["Selling Price*"]),
+      mrp: parseFloat(rawProduct["MRP"]),
+      tax_percentage: rawProduct["Tax Percentage"]
+        ? parseFloat(rawProduct["Tax Percentage"])
+        : null,
+    };
+
+    if (
+      isNaN(pricing.cost_price) ||
+      isNaN(pricing.selling_price) ||
+      isNaN(pricing.mrp)
+    ) {
+      throw new Error(`Invalid pricing at row ${index + 1}`);
+    }
+
+    if (pricing.mrp < pricing.selling_price) {
+      throw new Error(
+        `MRP cannot be less than selling price at row ${index + 1}`,
+      );
+    }
+
+    const variant_images = rawProduct["Variant Images (comma separated)"]
+      ? rawProduct["Variant Images (comma separated)"]
+          .split(",")
+          .map((url) => url.trim())
+          .filter(Boolean)
+      : [];
+
+    return {
+      product,
+      variant,
+      pricing,
+      variant_images,
+    };
+  });
+
+  return await importProducts(normalizedProducts, Number(userId), {
+    state: location.state.trim(),
+    city: location.city.trim(),
+  });
 };

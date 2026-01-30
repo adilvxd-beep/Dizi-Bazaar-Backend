@@ -1194,3 +1194,11 @@ export const findDiscountedProducts = async (
     currentPage,
   };
 };
+
+export const importProducts = async (productsArray, userId, location) => {
+  return {
+    productsArray,
+    userId,
+    location,
+  };
+};

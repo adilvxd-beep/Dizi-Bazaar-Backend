@@ -27,6 +27,7 @@ import {
   updateFullProductWithVariantsAndPricing,
   deleteFullProductById,
   toggleProductStatusById,
+  importProductsService,
 } from "./admin.products.service.js";
 
 import ApiError from "../../../shared/utils/ApiError.js";
@@ -360,10 +361,17 @@ export const getProductsByCategoryController = async (req, res, next) => {
 export const importProductsController = async (req, res, next) => {
   try {
     const rows = req.parsedRows;
+    const { category_id, business_category_id } = req.body;
+    const completeRows = rows.map((row) => ({
+      ...row,
+      category_id,
+      business_category_id,
+    }));
 
-    console.log(rows);
-
-    const result = { message: "Import functionality not yet implemented" };
+    const result = await importProductsService(completeRows, req.user.id, {
+      state: "Uttar Pradesh",
+      city: "Noida",
+    });
 
     res.status(201).json(new ApiResponse(201, result));
   } catch (error) {

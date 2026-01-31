@@ -1196,9 +1196,183 @@ export const findDiscountedProducts = async (
 };
 
 export const importProducts = async (productsArray, userId, location) => {
-  return {
-    productsArray,
-    userId,
-    location,
-  };
+  const client = await pool.connect();
+
+  const successItems = [];
+  const failedItems = [];
+
+  try {
+    for (const productData of productsArray) {
+      // Basic product validation
+      if (
+        !productData.product_name ||
+        !productData.business_category_id ||
+        !productData.category_id ||
+        !Array.isArray(productData.variants) ||
+        productData.variants.length === 0
+      ) {
+        failedItems.push({
+          type: "product",
+          product_name: productData.product_name || null,
+          reason: "Missing required product fields or variants",
+        });
+        continue;
+      }
+
+      try {
+        await client.query("BEGIN");
+
+        // Insert product
+        const productResult = await client.query(
+          `
+          INSERT INTO products
+          (product_name, business_category_id, category_id, description, main_image, status)
+          VALUES ($1,$2,$3,$4,$5,$6)
+          RETURNING *
+          `,
+          [
+            productData.product_name,
+            productData.business_category_id,
+            productData.category_id,
+            productData.description,
+            productData.main_image,
+            productData.status || "active",
+          ],
+        );
+
+        const product = productResult.rows[0];
+        const createdVariants = [];
+
+        for (const variant of productData.variants) {
+          // Variant validation
+          if (
+            !variant.variant_name ||
+            !variant.sku ||
+            !variant.pricing ||
+            variant.pricing.cost_price == null ||
+            variant.pricing.selling_price == null
+          ) {
+            failedItems.push({
+              type: "variant",
+              product_name: product.product_name,
+              variant_name: variant.variant_name || null,
+              sku: variant.sku || null,
+              reason: "Missing required variant fields",
+            });
+            continue;
+          }
+
+          try {
+            const variantResult = await client.query(
+              `
+              INSERT INTO product_variants
+              (product_id, variant_name, attribute_name_1, attribute_value_1,
+               attribute_name_2, attribute_value_2, attribute_name_3, attribute_value_3, sku)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+              RETURNING *
+              `,
+              [
+                product.id,
+                variant.variant_name,
+                variant.attribute_name_1,
+                variant.attribute_value_1,
+                variant.attribute_name_2,
+                variant.attribute_value_2,
+                variant.attribute_name_3,
+                variant.attribute_value_3,
+                variant.sku,
+              ],
+            );
+
+            const createdVariant = variantResult.rows[0];
+
+            // Variant images
+            if (Array.isArray(variant.images) && variant.images.length > 0) {
+              const imgValues = [];
+              const imgPlaceholders = [];
+
+              variant.images.forEach((imageUrl, index) => {
+                const offset = index * 3;
+                imgPlaceholders.push(
+                  `($${offset + 1},$${offset + 2},$${offset + 3})`,
+                );
+                imgValues.push(createdVariant.id, imageUrl, index);
+              });
+
+              await client.query(
+                `
+                INSERT INTO variant_images (variant_id, image_url, display_order)
+                VALUES ${imgPlaceholders.join(",")}
+                `,
+                imgValues,
+              );
+            }
+
+            // Variant pricing
+            await client.query(
+              `
+              INSERT INTO variant_pricing
+              (variant_id,user_id,cost_price,selling_price,mrp,tax_percentage,state,city)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+              `,
+              [
+                createdVariant.id,
+                userId,
+                variant.pricing.cost_price,
+                variant.pricing.selling_price,
+                variant.pricing.mrp || variant.pricing.selling_price * 1.5,
+                variant.pricing.tax_percentage || 0,
+                location.state,
+                location.city,
+              ],
+            );
+
+            createdVariants.push(createdVariant);
+          } catch (variantError) {
+            failedItems.push({
+              type: "variant",
+              product_name: product.product_name,
+              variant_name: variant.variant_name,
+              sku: variant.sku,
+              reason: variantError.message,
+            });
+          }
+        }
+
+        if (createdVariants.length === 0) {
+          // No valid variants → rollback product
+          await client.query("ROLLBACK");
+          failedItems.push({
+            type: "product",
+            product_name: productData.product_name,
+            reason: "All variants failed validation or insert",
+          });
+          continue;
+        }
+
+        await client.query("COMMIT");
+
+        successItems.push({
+          product,
+          variants: createdVariants,
+        });
+      } catch (productError) {
+        await client.query("ROLLBACK");
+        failedItems.push({
+          type: "product",
+          product_name: productData.product_name,
+          reason: productError.message,
+        });
+      }
+    }
+
+    return {
+      successCount: successItems.length,
+      failedCount: failedItems.length,
+      successItems,
+      failedItems,
+    };
+  } finally {
+    client.release();
+  }
 };

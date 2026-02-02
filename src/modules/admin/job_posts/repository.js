@@ -83,16 +83,77 @@ export const findJobPostById = async (id) => {
 };
 
 // Get All Job Posts (Admin)
-export const findAllJobPosts = async () => {
-  const result = await pool.query(
-    `
-    SELECT *
-    FROM job_posts
-    ORDER BY created_at DESC
-    `,
-  );
+export const findAllJobPosts = async (query = {}) => {
+  const {
+    search,
+    status,
+    page = 1,
+    limit = 10,
+    sortBy = "created_at",
+    order = "desc",
+  } = query;
 
-  return result.rows;
+  const ALLOWED_STATUSES = ["active", "inactive", "closed", "draft"];
+
+  // Ensure valid numbers
+  const currentPage = Math.max(parseInt(page, 10), 1);
+  const pageLimit = Math.max(parseInt(limit, 10), 1);
+  const offset = (currentPage - 1) * pageLimit;
+
+  const allowedSortBy = ["id", "title", "status", "created_at", "updated_at"];
+
+  const sortColumn = allowedSortBy.includes(sortBy)
+    ? `jp.${sortBy}`
+    : "jp.created_at";
+
+  const sortOrder = order?.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+  const conditions = [];
+  const values = [];
+
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(
+      `(jp.title ILIKE $${values.length} OR jp.description ILIKE $${values.length})`,
+    );
+  }
+
+  if (status && ALLOWED_STATUSES.includes(status)) {
+    values.push(status);
+    conditions.push(`jp.status = $${values.length}`);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const dataQuery = `
+    SELECT jp.*
+    FROM job_posts jp
+    ${whereClause}
+    ORDER BY ${sortColumn} ${sortOrder}
+    LIMIT $${values.length + 1}
+    OFFSET $${values.length + 2};
+  `;
+
+  const dataValues = [...values, pageLimit, offset];
+  const { rows } = await pool.query(dataQuery, dataValues);
+
+  const countQuery = `
+    SELECT COUNT(*)::int AS count
+    FROM job_posts jp
+    ${whereClause};
+  `;
+
+  const countResult = await pool.query(countQuery, values);
+  const totalItems = countResult.rows[0].count;
+  const totalPages = Math.ceil(totalItems / pageLimit);
+
+  return {
+    items: rows,
+    totalItems,
+    totalPages,
+    currentPage,
+  };
 };
 
 // Update Job Post

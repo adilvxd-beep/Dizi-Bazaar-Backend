@@ -98,8 +98,8 @@ export const getJobPostByIdService = async (id) => {
 };
 
 // Get All Job Posts (Admin)
-export const getAllJobPostsService = async () => {
-  return await findAllJobPosts();
+export const getAllJobPostsService = async (query) => {
+  return await findAllJobPosts(query);
 };
 
 // Update Job Post

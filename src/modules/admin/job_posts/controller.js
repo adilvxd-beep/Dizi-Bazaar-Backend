@@ -17,7 +17,7 @@ import ApiResponse from "../../../shared/utils/ApiResponse.js";
 // Get All Job Posts (Admin)
 export const getJobPosts = async (req, res, next) => {
   try {
-    const jobs = await getAllJobPostsService();
+    const jobs = await getAllJobPostsService(req.query);
     res.json(new ApiResponse(200, jobs));
   } catch (error) {
     next(new ApiError(400, error.message));

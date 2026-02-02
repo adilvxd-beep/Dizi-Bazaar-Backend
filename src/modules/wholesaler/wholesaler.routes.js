@@ -11,5 +11,6 @@ router.use("/orders", orderRoutes);
 router.use("/inventory", inventoryRoutes);
 router.use("/categories", category);
 router.use("/products", product);
+router.use("/user", wholesaler);
 
 export default router;

@@ -6,18 +6,33 @@ import ApiResponse from "../../shared/utils/ApiResponse.js";
 export const uploadAndDelete = async (req, res, next) => {
   try {
     let deleteUrls = [];
+    let uploadOptions = {};
 
-    if (req.body.deleteUrls) {
+    if (req.body?.deleteUrls) {
       try {
-        deleteUrls = JSON.parse(req.body.deleteUrls);
+        deleteUrls = Array.isArray(req.body.deleteUrls)
+          ? req.body.deleteUrls
+          : JSON.parse(req.body.deleteUrls);
       } catch {
         throw new ApiError(400, "Invalid deleteUrls format");
       }
     }
 
+    if (req.body?.uploadOptions) {
+      try {
+        uploadOptions =
+          typeof req.body.uploadOptions === "string"
+            ? JSON.parse(req.body.uploadOptions)
+            : req.body.uploadOptions;
+      } catch {
+        throw new ApiError(400, "Invalid uploadOptions format");
+      }
+    }
+
     const result = await mediaService.handleMedia({
-      files: req.files || req.file,
+      files: req.files ?? req.file ?? null,
       deleteUrls,
+      uploadOptions,
     });
 
     res

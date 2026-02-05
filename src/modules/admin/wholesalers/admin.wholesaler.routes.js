@@ -9,7 +9,10 @@ import {
   updateWholesalerDocumentsStatusController,
   verifyWholesalerController,
   deleteWholesalerByIdController,
-  editWholesalerBasicAndDocumentsController
+  editWholesalerBasicAndDocumentsController,
+  createWholesalerBankDetailsController,
+  getAllUsersBankDetailsController,
+  deleteWholesalerBankDetailsController
 } from "./admin.wholesaler.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -24,6 +27,7 @@ import {
   updateWholesalerDocumentsStatusSchema,
   verifyWholesalerSchema,
   editWholesalerBasicAndDocumentsSchema,
+  createWholesalerBankDetailsSchema,
 } from "./admin.wholesaler.schema.js";
 
 const router = express.Router();
@@ -35,6 +39,14 @@ router.post(
   authorize(ROLES.ADMIN),
   validate(createWholesalerSchema),
   createWholesalerController
+);
+
+
+router.get(
+  "/bank-details",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  getAllUsersBankDetailsController
 );
 
 /* ================= GET WHOLESALER BY ID ================= */
@@ -104,5 +116,22 @@ router.patch(
   validate(editWholesalerBasicAndDocumentsSchema),
   editWholesalerBasicAndDocumentsController
 );
+
+router.post(
+  "/:userId/bank-details",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  validate(createWholesalerBankDetailsSchema),
+  createWholesalerBankDetailsController
+);
+
+router.delete(
+  "/:userId/bank-details",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  deleteWholesalerBankDetailsController
+);
+
+
 
 export default router;

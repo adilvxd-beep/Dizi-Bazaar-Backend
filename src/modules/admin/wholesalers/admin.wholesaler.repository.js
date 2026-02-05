@@ -675,3 +675,126 @@ export const editWholesalerBasicAndDocuments = async (
     client.release();
   }
 };
+
+export const createWholesalerBankDetails = async (
+  userId,
+  bankDetails
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    if (bankDetails.accountType) {
+      // When API sends account type
+      await client.query(
+        `
+        INSERT INTO user_bank_details (
+          user_id,
+          bank_name,
+          account_holder_name,
+          account_number,
+          ifsc_code,
+          upi_id,
+          account_type
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [
+          userId,
+          bankDetails.bankName,
+          bankDetails.accountHolderName,
+          bankDetails.accountNumber,
+          bankDetails.ifscCode,
+          bankDetails.upiId,
+          bankDetails.accountType
+        ]
+      );
+    } else {
+      // When API does NOT send account type → DB default works
+      await client.query(
+        `
+        INSERT INTO user_bank_details (
+          user_id,
+          bank_name,
+          account_holder_name,
+          account_number,
+          ifsc_code,
+          upi_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        `,
+        [
+          userId,
+          bankDetails.bankName,
+          bankDetails.accountHolderName,
+          bankDetails.accountNumber,
+          bankDetails.ifscCode,
+          bankDetails.upiId
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      userId,
+      bankDetailsCreated: true,
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getAllUsersBankDetails = async () => {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      u.id AS user_id,
+      u.username,
+      u.email,
+      u.phone,
+
+      b.id AS bank_detail_id,
+      b.bank_name,
+      b.account_holder_name,
+      b.account_number,
+      b.ifsc_code,
+      b.upi_id,
+      b.account_type,
+      b.created_at,
+      b.updated_at
+
+    FROM user_bank_details b
+    JOIN users u ON u.id = b.user_id
+    ORDER BY b.created_at DESC;
+    `
+  );
+
+  return rows; // returns full list
+};
+
+export const deleteWholesalerBankDetailsByUserId = async (userId) => {
+  const { rowCount } = await pool.query(
+    `
+    DELETE FROM user_bank_details
+    WHERE user_id = $1
+    `,
+    [userId]
+  );
+
+  if (rowCount === 0) {
+    throw new Error("BANK_DETAILS_NOT_FOUND");
+  }
+
+  return {
+    userId,
+    bankDetailsDeleted: true,
+  };
+};
+
+

@@ -7,6 +7,7 @@ import product from "./products/routes.js";
 
 const router = express.Router();
 
+router.use("/userWholesaler", wholesaler);
 router.use("/orders", orderRoutes);
 router.use("/inventory", inventoryRoutes);
 router.use("/categories", category);

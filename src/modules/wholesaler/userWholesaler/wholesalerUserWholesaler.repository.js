@@ -15,36 +15,30 @@ export const createWholesaler = async (data, user) => {
       websiteUrl,
       businessAddress,
       billingAddress,
-      gstNumber,
-      panNumber,
-      aadharNumber,
-      msmeNumber,
       yearsInBusiness,
       numberOfEmployees,
-      annualTurnover,
-      tradeLicenseNumber
+      annualTurnover
     } = data;
 
     const { id: userId, role } = user;
 
-/* =========================
-   FETCH USER DATA (SOURCE OF TRUTH)
-========================= */
-const userRes = await client.query(
-  `
-  SELECT phone, business_category_id
-  FROM users
-  WHERE id = $1
-  `,
-  [userId]
-);
+    /* =========================
+       FETCH USER DATA (SOURCE OF TRUTH)
+    ========================= */
+    const userRes = await client.query(
+      `
+      SELECT phone, business_category_id
+      FROM users
+      WHERE id = $1
+      `,
+      [userId]
+    );
 
-if (userRes.rowCount === 0) {
-  throw new Error("USER_NOT_FOUND");
-}
+    if (userRes.rowCount === 0) {
+      throw new Error("USER_NOT_FOUND");
+    }
 
-const { phone, business_category_id } = userRes.rows[0];
-
+    const { phone, business_category_id } = userRes.rows[0];
 
     /* =========================
        PREVENT DUPLICATE WHOLESALER
@@ -59,7 +53,7 @@ const { phone, business_category_id } = userRes.rows[0];
     }
 
     /* =========================
-       CREATE WHOLESALER
+       CREATE WHOLESALER (NO DOCUMENTS)
     ========================= */
     const { rows } = await client.query(
       `
@@ -73,13 +67,13 @@ const { phone, business_category_id } = userRes.rows[0];
         website_url,
         business_address,
         billing_address,
+        years_in_business,
+        number_of_employees,
+        annual_turnover,
         gst_number,
         pan_number,
         aadhar_number,
         msme_number,
-        years_in_business,
-        number_of_employees,
-        annual_turnover,
         trade_license_number,
         status,
         created_by_id,
@@ -89,37 +83,32 @@ const { phone, business_category_id } = userRes.rows[0];
       VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15,
-        $16, $17, 'pending', $18, $19, $20
+        $11, $12,
+        NULL, NULL, NULL, NULL, NULL,
+        'profile_pending', $13, $14, $15
       )
       RETURNING id, status, created_at
       `,
       [
         businessName,
-        business_category_id,   // from users table
+        business_category_id,
         ownerName,
-        phone,                  // from users table
+        phone,
         alternatePhoneNumber,
         email,
         websiteUrl || null,
         businessAddress,
         billingAddress,
-        gstNumber,
-        panNumber,
-        aadharNumber,
-        msmeNumber,
         yearsInBusiness,
         numberOfEmployees,
         annualTurnover,
-        tradeLicenseNumber,
-        userId,                 // created_by_id
-        role,                   // created_by_role
-        userId                  // user_id
+        userId,
+        role,
+        userId
       ]
     );
 
     await client.query("COMMIT");
-
     return rows[0];
 
   } catch (error) {
@@ -129,6 +118,7 @@ const { phone, business_category_id } = userRes.rows[0];
     client.release();
   }
 };
+
 
 //create wholesaler documents
 export const createWholesalerDocuments = async (data, user) => {
@@ -143,7 +133,10 @@ export const createWholesalerDocuments = async (data, user) => {
       aadharCardUrl,
       bankStatementUrl,
       businessProofUrl,
-      cancelledChequeUrl
+      cancelledChequeUrl,
+      gstNumber,
+      panNumber,
+      aadharNumber
     } = data;
 
     const { id: userId } = user;
@@ -152,11 +145,7 @@ export const createWholesalerDocuments = async (data, user) => {
        FETCH WHOLESALER ID FROM USER
     ========================= */
     const wholesalerRes = await client.query(
-      `
-      SELECT id
-      FROM wholesalers
-      WHERE user_id = $1
-      `,
+      `SELECT id FROM wholesalers WHERE user_id = $1`,
       [userId]
     );
 
@@ -170,11 +159,7 @@ export const createWholesalerDocuments = async (data, user) => {
        PREVENT DUPLICATE DOCUMENTS
     ========================= */
     const existing = await client.query(
-      `
-      SELECT id
-      FROM wholesaler_documents
-      WHERE wholesaler_id = $1
-      `,
+      `SELECT id FROM wholesaler_documents WHERE wholesaler_id = $1`,
       [wholesalerId]
     );
 
@@ -183,30 +168,36 @@ export const createWholesalerDocuments = async (data, user) => {
     }
 
     /* =========================
-       INSERT DOCUMENTS
+       INSERT DOCUMENTS + NUMBERS
     ========================= */
     const { rows } = await client.query(
       `
       INSERT INTO wholesaler_documents (
         wholesaler_id,
         gst_certificate_url,
+        gst_number,
         pan_card_url,
+        pan_number,
         aadhar_card_url,
+        aadhar_number,
         bank_statement_url,
         business_proof_url,
         cancelled_cheque_url,
         user_id
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
       )
       RETURNING id, created_at
       `,
       [
         wholesalerId,
         gstCertificateUrl,
+        gstNumber,
         panCardUrl,
+        panNumber,
         aadharCardUrl,
+        aadharNumber,
         bankStatementUrl,
         businessProofUrl,
         cancelledChequeUrl,

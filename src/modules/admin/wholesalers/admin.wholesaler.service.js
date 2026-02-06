@@ -8,6 +8,9 @@ import {
   updateWholesalerAndDocuments,
   deleteWholesalerById,
   editWholesalerBasicAndDocuments,
+  createWholesalerBankDetails,
+  getAllUsersBankDetails,
+  deleteWholesalerBankDetailsByUserId,
 } from "./admin.wholesaler.repository.js";
 
 
@@ -253,3 +256,46 @@ export const editWholesalerBasicAndDocumentsService = async (
     throw error; // unknown errors bubble up
   }
 };
+
+export const createWholesalerBankDetailsService = async (
+  userId,
+  bankDetails
+) => {
+  try {
+    return await createWholesalerBankDetails(userId, bankDetails);
+
+  } catch (error) {
+
+    // FK violation → user_id not found in users table
+    if (error.code === "23503") {
+      const err = new Error("USER_NOT_FOUND");
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Unique index on user_id → bank details already exist
+    if (error.code === "23505") {
+      const err = new Error("BANK_DETAILS_ALREADY_EXIST");
+      err.statusCode = 409;
+      throw err;
+    }
+
+    throw error;
+  }
+};
+
+export const getAllUsersBankDetailsService = async () => {
+  return await getAllUsersBankDetails();
+};
+
+export const deleteWholesalerBankDetailsService = async (userId) => {
+  try {
+    return await deleteWholesalerBankDetailsByUserId(userId);
+  } catch (error) {
+    if (error.message === "BANK_DETAILS_NOT_FOUND") {
+      error.statusCode = 404;
+    }
+    throw error;
+  }
+};
+

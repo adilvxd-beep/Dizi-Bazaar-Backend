@@ -133,3 +133,12 @@ export const editWholesalerBasicAndDocumentsSchema = z
         "At least one of user, wholesaler, or documents must be provided",
     }
   );
+
+  export const createWholesalerBankDetailsSchema = z.object({
+  bankName: z.string().min(2),
+  accountHolderName: z.string().min(2),
+  accountNumber: z.string().min(6),
+  ifscCode: z
+    .string()
+    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
+});

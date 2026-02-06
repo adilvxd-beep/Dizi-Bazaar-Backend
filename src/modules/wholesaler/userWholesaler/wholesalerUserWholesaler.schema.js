@@ -1,22 +1,25 @@
 import { z } from "zod";
 
+const optStr = z.string().optional().or(z.literal(""));
+
 export const createWholesalerSchema = z.object({
-  businessName: z.string().min(1),
-  ownerName: z.string().min(1),
-  alternatePhoneNumber: z.string().optional(),
-  email: z.string().email(),
-  websiteUrl: z.string().url().optional(),
-  businessAddress: z.string().min(1),
-  billingAddress: z.string().min(1),
-  gstNumber: z.string().min(1),
-  panNumber: z.string().min(1),
-  aadharNumber: z.string().min(1),
-  msmeNumber: z.string().optional(),
-  yearsInBusiness: z.number().int().min(0),
-  numberOfEmployees: z.number().int().min(0),
-  annualTurnover: z.number().min(0),
-  tradeLicenseNumber: z.string().min(1)
+  businessName: z.string().min(1, "Business name is required"),
+  email: z.string().email("Valid email is required"),
+
+  ownerName: optStr,
+  alternatePhoneNumber: optStr,
+  websiteUrl: z.string().url().optional().or(z.literal("")),
+  businessAddress: optStr,
+  billingAddress: optStr,
+  
+  tradeLicenseNumber: optStr,
+  msmeNumber: optStr,
+
+  yearsInBusiness: z.number().optional(),
+  numberOfEmployees: z.number().optional(),
+  annualTurnover: z.number().optional(),
 });
+
 
 export const updateWholesalerSchema = z.object({
   /* =========================

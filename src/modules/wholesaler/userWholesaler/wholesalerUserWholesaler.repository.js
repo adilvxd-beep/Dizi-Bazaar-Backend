@@ -343,5 +343,277 @@ export const updateWholesalerAndDocuments = async (data, user) => {
   }
 };
 
+export const createWholesalerBankDetailsFromWholesaler = async (
+  data,
+  user
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const {
+      bankName,
+      accountHolderName,
+      accountNumber,
+      ifscCode,
+      upiId,
+      accountType,
+    } = data;
+
+    const { id: userId } = user;
+
+    /* =========================
+       FETCH WHOLESALER ID FROM USER
+    ========================= */
+    const wholesalerRes = await client.query(
+      `
+      SELECT id
+      FROM wholesalers
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    if (wholesalerRes.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    const wholesalerId = wholesalerRes.rows[0].id;
+
+    /* =========================
+       PREVENT DUPLICATE BANK DETAILS
+    ========================= */
+    const existing = await client.query(
+      `
+      SELECT id
+      FROM user_bank_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    if (existing.rowCount > 0) {
+      throw new Error("BANK_DETAILS_ALREADY_SUBMITTED");
+    }
+
+    /* =========================
+       INSERT BANK DETAILS
+       (account_type optional → DB default works)
+    ========================= */
+    if (accountType) {
+      await client.query(
+        `
+        INSERT INTO user_bank_details (
+          user_id,
+          bank_name,
+          account_holder_name,
+          account_number,
+          ifsc_code,
+          upi_id,
+          account_type
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [
+          userId,
+          bankName,
+          accountHolderName,
+          accountNumber,
+          ifscCode,
+          upiId,
+          accountType,
+        ]
+      );
+    } else {
+      await client.query(
+        `
+        INSERT INTO user_bank_details (
+          user_id,
+          bank_name,
+          account_holder_name,
+          account_number,
+          ifsc_code,
+          upi_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        `,
+        [
+          userId,
+          bankName,
+          accountHolderName,
+          accountNumber,
+          ifscCode,
+          upiId,
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      userId,
+      bankDetailsCreated: true,
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getWholesalerBankDetailsFromWholesaler = async (user) => {
+  const { id: userId } = user;
+
+  const res = await pool.query(
+    `
+    SELECT
+      id,
+      user_id,
+      bank_name,
+      account_holder_name,
+      account_number,
+      ifsc_code,
+      upi_id,
+      account_type,
+      created_at,
+      updated_at
+    FROM user_bank_details
+    WHERE user_id = $1
+    `,
+    [userId]
+  );
+
+  if (res.rowCount === 0) {
+    throw new Error("BANK_DETAILS_NOT_FOUND");
+  }
+
+  return res.rows[0];
+};
+
+
+export const updateWholesalerBankDetailsFromWholesaler = async (
+  updateData,
+  user
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id: userId } = user;
+
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (updateData.bankName) {
+      fields.push(`bank_name = $${idx++}`);
+      values.push(updateData.bankName);
+    }
+
+    if (updateData.accountHolderName) {
+      fields.push(`account_holder_name = $${idx++}`);
+      values.push(updateData.accountHolderName);
+    }
+
+    if (updateData.accountNumber) {
+      fields.push(`account_number = $${idx++}`);
+      values.push(updateData.accountNumber);
+    }
+
+    if (updateData.ifscCode) {
+      fields.push(`ifsc_code = $${idx++}`);
+      values.push(updateData.ifscCode);
+    }
+
+    if (updateData.upiId !== undefined) {
+      fields.push(`upi_id = $${idx++}`);
+      values.push(updateData.upiId);
+    }
+
+    // optional enum → only update if provided
+    if (updateData.accountType) {
+      fields.push(`account_type = $${idx++}`);
+      values.push(updateData.accountType);
+    }
+
+    if (fields.length === 0) {
+      throw new Error("NO_FIELDS_TO_UPDATE");
+    }
+
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    values.push(userId);
+
+    const res = await client.query(
+      `
+      UPDATE user_bank_details
+      SET ${fields.join(", ")}
+      WHERE user_id = $${idx}
+      RETURNING id, user_id
+      `,
+      values
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("BANK_DETAILS_NOT_FOUND");
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      userId,
+      bankDetailsUpdated: true,
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const deleteWholesalerBankDetailsFromWholesaler = async (user) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id: userId } = user;
+
+    const res = await client.query(
+      `
+      DELETE FROM user_bank_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("BANK_DETAILS_NOT_FOUND");
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      userId,
+      bankDetailsDeleted: true,
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+
+
 
 

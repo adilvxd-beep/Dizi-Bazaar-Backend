@@ -12,6 +12,7 @@ import {
   editWholesalerBasicAndDocumentsController,
   createWholesalerBankDetailsController,
   getAllUsersBankDetailsController,
+  updateUserBankDetailsController,
   deleteWholesalerBankDetailsController
 } from "./admin.wholesaler.controller.js";
 
@@ -28,6 +29,7 @@ import {
   verifyWholesalerSchema,
   editWholesalerBasicAndDocumentsSchema,
   createWholesalerBankDetailsSchema,
+  editWholesalerBankDetailsSchema
 } from "./admin.wholesaler.schema.js";
 
 const router = express.Router();
@@ -132,6 +134,15 @@ router.delete(
   deleteWholesalerBankDetailsController
 );
 
+router.patch(
+  "/:userId/bank-details",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  validate(editWholesalerBankDetailsSchema),
+  updateUserBankDetailsController
+);
+
+  
 
 
 export default router;

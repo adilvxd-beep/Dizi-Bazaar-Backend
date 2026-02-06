@@ -60,3 +60,31 @@ export const updateWholesalerSchema = z.object({
   businessProofUrl: z.string().url().optional(),
   cancelledChequeUrl: z.string().url().optional()
 }).strict();
+
+/* ================= UPDATE WHOLESALER BANK DETAILS ================= */
+export const updateWholesalerBankDetailsSchema = z
+  .object({
+    bankName: z.string().min(2).optional(),
+
+    accountHolderName: z.string().min(2).optional(),
+
+    accountNumber: z.string().min(6).optional(),
+
+    ifscCode: z
+      .string()
+      .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code")
+      .optional(),
+
+    upiId: z.string().optional(),
+
+    accountType: z.enum([
+      "saving",
+      "current",
+      "cash credit",
+      "overdraft",
+      "loan",
+    ]).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one bank detail field must be provided",
+  });

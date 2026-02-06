@@ -10,6 +10,7 @@ import {
   editWholesalerBasicAndDocumentsService,
   createWholesalerBankDetailsService,
   getAllUsersBankDetailsService,
+  updateUserBankDetailsService,
   deleteWholesalerBankDetailsService,
 } from "./admin.wholesaler.service.js";
 
@@ -266,6 +267,45 @@ export const getAllUsersBankDetailsController = async (
         200,
         result,
         "All users bank details fetched successfully"
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserBankDetailsController = async (
+  req,
+  res,
+  next
+) => {
+  console.log("CONTROLLER HIT: updateUserBankDetailsController");
+
+  try {
+    const userId = Number(req.params.userId);
+
+    // validate userId
+    if (Number.isNaN(userId)) {
+      return res.status(400).json(
+        new ApiResponse(
+          400,
+          null,
+          "Invalid userId"
+        )
+      );
+    }
+
+    const result = await updateUserBankDetailsService(
+      userId,
+      req.body,
+      req.user // admin user from auth middleware
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        result,
+        "User bank details updated successfully"
       )
     );
   } catch (error) {

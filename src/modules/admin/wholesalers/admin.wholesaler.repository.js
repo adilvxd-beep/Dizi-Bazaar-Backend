@@ -778,6 +778,90 @@ export const getAllUsersBankDetails = async () => {
   return rows; // returns full list
 };
 
+export const updateUserBankDetails = async (
+  userId,
+  updateData,
+  adminUser
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (updateData.bankName) {
+      fields.push(`bank_name = $${idx++}`);
+      values.push(updateData.bankName);
+    }
+
+    if (updateData.accountHolderName) {
+      fields.push(`account_holder_name = $${idx++}`);
+      values.push(updateData.accountHolderName);
+    }
+
+    if (updateData.accountNumber) {
+      fields.push(`account_number = $${idx++}`);
+      values.push(updateData.accountNumber);
+    }
+
+    if (updateData.ifscCode) {
+      fields.push(`ifsc_code = $${idx++}`);
+      values.push(updateData.ifscCode);
+    }
+
+    if (updateData.upiId !== undefined) {
+      fields.push(`upi_id = $${idx++}`);
+      values.push(updateData.upiId);
+    }
+
+    if (updateData.accountType) {
+      fields.push(`account_type = $${idx++}`);
+      values.push(updateData.accountType);
+    }
+
+    // ensure something is being updated
+    if (fields.length === 0) {
+      throw new Error("NO_FIELDS_TO_UPDATE");
+    }
+
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    values.push(userId);
+
+    const bankRes = await client.query(
+      `
+      UPDATE user_bank_details
+      SET ${fields.join(", ")}
+      WHERE user_id = $${idx}
+      RETURNING id, user_id
+      `,
+      values
+    );
+
+    if (bankRes.rowCount === 0) {
+      throw new Error("BANK_DETAILS_NOT_FOUND");
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      userId,
+      bankDetailsUpdated: true,
+      updatedBy: adminUser.id,
+    };
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+
 export const deleteWholesalerBankDetailsByUserId = async (userId) => {
   const { rowCount } = await pool.query(
     `

@@ -10,6 +10,7 @@ import {
   editWholesalerBasicAndDocuments,
   createWholesalerBankDetails,
   getAllUsersBankDetails,
+  updateUserBankDetails,
   deleteWholesalerBankDetailsByUserId,
 } from "./admin.wholesaler.repository.js";
 
@@ -299,3 +300,27 @@ export const deleteWholesalerBankDetailsService = async (userId) => {
   }
 };
 
+export const updateUserBankDetailsService = async (
+  userId,
+  updateData,
+  adminUser
+) => {
+  try {
+    return await updateUserBankDetails(userId, updateData, adminUser);
+
+  } catch (error) {
+
+    if (error.message === "BANK_DETAILS_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (error.message === "NO_FIELDS_TO_UPDATE") {
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // enum / FK / DB constraint errors fall through
+    throw error;
+  }
+};

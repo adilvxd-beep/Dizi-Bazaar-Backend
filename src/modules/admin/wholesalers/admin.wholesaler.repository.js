@@ -16,11 +16,7 @@ export const createWholesalerBasic = async (data, adminUser) => {
       VALUES ($1, $2, $3, 'wholesaler')
       RETURNING id
       `,
-      [
-        user.username,
-        user.email.toLowerCase(),
-        user.phone
-      ]
+      [user.username, user.email.toLowerCase(), user.phone],
     );
 
     const userId = userRes.rows[0].id;
@@ -77,8 +73,8 @@ export const createWholesalerBasic = async (data, adminUser) => {
         wholesaler.annualTurnover,
         wholesaler.tradeLicenseNumber,
         adminId,
-        adminRole
-      ]
+        adminRole,
+      ],
     );
 
     await client.query("COMMIT");
@@ -86,9 +82,8 @@ export const createWholesalerBasic = async (data, adminUser) => {
     return {
       userId,
       wholesalerId: wholesalerRes.rows[0].id,
-      status: wholesalerRes.rows[0].status // pending
+      status: wholesalerRes.rows[0].status, // pending
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -104,7 +99,7 @@ export const getWholesalerById = async (wholesalerId) => {
     FROM wholesalers
     WHERE id = $1
     `,
-    [wholesalerId]
+    [wholesalerId],
   );
 
   if (res.rowCount === 0) {
@@ -112,8 +107,7 @@ export const getWholesalerById = async (wholesalerId) => {
   }
 
   return res.rows[0];
-};   
-
+};
 
 export const findAllWholesalers = async (query = {}) => {
   const {
@@ -154,7 +148,7 @@ export const findAllWholesalers = async (query = {}) => {
       `(w.business_name ILIKE $${values.length}
         OR w.owner_name ILIKE $${values.length}
         OR w.email ILIKE $${values.length}
-        OR w.phone_number ILIKE $${values.length})`
+        OR w.phone_number ILIKE $${values.length})`,
     );
   }
 
@@ -235,11 +229,7 @@ export const findAllWholesalers = async (query = {}) => {
   };
 };
 
-
-export const createWholesalerDocuments = async (
-  wholesalerId,
-  documents
-) => {
+export const createWholesalerDocuments = async (wholesalerId, documents) => {
   const client = await pool.connect();
 
   try {
@@ -252,7 +242,7 @@ export const createWholesalerDocuments = async (
       FROM wholesalers
       WHERE id = $1
       `,
-      [wholesalerId]
+      [wholesalerId],
     );
 
     if (res.rowCount === 0) {
@@ -260,7 +250,7 @@ export const createWholesalerDocuments = async (
     }
 
     const userId = res.rows[0].user_id;
-    //create documents  
+    //create documents
     await client.query(
       `
       INSERT INTO wholesaler_documents (
@@ -283,17 +273,16 @@ export const createWholesalerDocuments = async (
         documents.aadharCardUrl,
         documents.bankStatementUrl,
         documents.businessProofUrl,
-        documents.cancelledChequeUrl
-      ]
+        documents.cancelledChequeUrl,
+      ],
     );
 
     await client.query("COMMIT");
 
     return {
       wholesalerId,
-      documentsCreated: true
+      documentsCreated: true,
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -309,23 +298,21 @@ export const updateWholesalerStatus = async (wholesalerId, status) => {
     await client.query("BEGIN");
 
     const wholesalerRes = await client.query(
-
       `UPDATE wholesalers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, user_id, status`,
-      [status, wholesalerId]
+      [status, wholesalerId],
     );
 
     if (wholesalerRes.rowCount === 0) {
       throw new Error("Wholesaler not found");
     }
 
-    const { user_id, status: newStatus} = wholesalerRes.rows[0];
+    const { user_id, status: newStatus } = wholesalerRes.rows[0];
 
     const isVerified = newStatus === "verified";
 
-    await client.query (
-
+    await client.query(
       `UPDATE users SET is_verified = $1, updated_at = NOW() WHERE id = $2`,
-      [isVerified, user_id]
+      [isVerified, user_id],
     );
 
     await client.query("COMMIT");
@@ -333,19 +320,15 @@ export const updateWholesalerStatus = async (wholesalerId, status) => {
     return {
       wholesalerId,
       status: newStatus,
-      userVerified: isVerified
+      userVerified: isVerified,
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
-    throw error
+    throw error;
   }
 };
 
-export const updateWholesalerDocumentStatus = async (
-  wholesalerId,
-  updates
-) => {
+export const updateWholesalerDocumentStatus = async (wholesalerId, updates) => {
   const client = await pool.connect();
 
   try {
@@ -354,7 +337,7 @@ export const updateWholesalerDocumentStatus = async (
     //check if documents exist
     const docCheck = await client.query(
       `SELECT id FROM wholesaler_documents WHERE wholesaler_id = $1`,
-      [wholesalerId]
+      [wholesalerId],
     );
 
     if (docCheck.rowCount === 0) {
@@ -381,16 +364,15 @@ export const updateWholesalerDocumentStatus = async (
           updated_at = NOW()
       WHERE wholesaler_id = $${index}
       `,
-      values
+      values,
     );
 
     await client.query("COMMIT");
 
     return {
       wholesalerId,
-      updatedFields: Object.keys(updates)
+      updatedFields: Object.keys(updates),
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -399,11 +381,10 @@ export const updateWholesalerDocumentStatus = async (
   }
 };
 
-
 export const updateWholesalerAndDocuments = async (
   wholesalerId,
   updateData,
-  adminUser
+  adminUser,
 ) => {
   const client = await pool.connect();
 
@@ -447,7 +428,7 @@ export const updateWholesalerAndDocuments = async (
       WHERE id = $${idx}
       RETURNING id, status, user_id
       `,
-      values
+      values,
     );
 
     if (wholesalerRes.rowCount === 0) {
@@ -464,7 +445,7 @@ export const updateWholesalerAndDocuments = async (
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       `,
-      [newStatus === "verified", user_id]
+      [newStatus === "verified", user_id],
     );
 
     //ensure documents record exists
@@ -474,25 +455,25 @@ export const updateWholesalerAndDocuments = async (
       VALUES ($1, $2)
       ON CONFLICT (wholesaler_id) DO NOTHING
       `,
-      [wholesalerId, user_id]
+      [wholesalerId, user_id],
     );
 
     //sync all document statuses to wholesaler status
-await client.query(
-  `
+    await client.query(
+      `
   UPDATE wholesaler_documents
   SET
-    gst_certificate_status = $1::wholesaler_status,
-    pan_card_status = $1::wholesaler_status,
-    aadhar_card_status = $1::wholesaler_status,
-    bank_statement_status = $1::wholesaler_status,
-    business_proof_status = $1::wholesaler_status,
-    cancelled_cheque_status = $1::wholesaler_status,
+    gst_certificate_status = $1::verification_status,
+    pan_card_status = $1::verification_status,
+    aadhar_card_status = $1::verification_status,
+    bank_statement_status = $1::verification_status,
+    business_proof_status = $1::verification_status,
+    cancelled_cheque_status = $1::verification_status,
     updated_at = CURRENT_TIMESTAMP
   WHERE wholesaler_id = $2
   `,
-  [newStatus, wholesalerId]
-);
+      [newStatus, wholesalerId],
+    );
 
     await client.query("COMMIT");
 
@@ -500,9 +481,8 @@ await client.query(
       wholesalerId,
       status: newStatus,
       userVerified: newStatus === "verified",
-      documentsStatus: newStatus
+      documentsStatus: newStatus,
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -512,7 +492,6 @@ await client.query(
 };
 
 export const deleteWholesalerById = async (wholesalerId) => {
-
   try {
     const res = await pool.query(
       `
@@ -520,7 +499,7 @@ export const deleteWholesalerById = async (wholesalerId) => {
       WHERE id = $1
       RETURNING id
       `,
-      [wholesalerId]
+      [wholesalerId],
     );
 
     if (res.rowCount === 0) {
@@ -529,18 +508,17 @@ export const deleteWholesalerById = async (wholesalerId) => {
 
     return {
       wholesalerId,
-      deleted: true
-    };      
+      deleted: true,
+    };
   } catch (error) {
     throw error;
-
   }
-}
+};
 
 export const editWholesalerBasicAndDocuments = async (
   wholesalerId,
   data,
-  adminUser
+  adminUser,
 ) => {
   const client = await pool.connect();
 
@@ -550,14 +528,14 @@ export const editWholesalerBasicAndDocuments = async (
     const { user, wholesaler, documents } = data;
     const { id: adminId, role: adminRole } = adminUser;
 
-   //get wholesaler user_id
+    //get wholesaler user_id
     const res = await client.query(
       `
       SELECT user_id
       FROM wholesalers
       WHERE id = $1
       `,
-      [wholesalerId]
+      [wholesalerId],
     );
 
     if (res.rowCount === 0) {
@@ -577,19 +555,14 @@ export const editWholesalerBasicAndDocuments = async (
           phone = COALESCE($3, phone)
         WHERE id = $4
         `,
-        [
-          user.username,
-          user.email?.toLowerCase(),
-          user.phone,
-          userId
-        ]
+        [user.username, user.email?.toLowerCase(), user.phone, userId],
       );
     }
 
-   //update wholesalers (same fields as create)
+    //update wholesalers (same fields as create)
     if (wholesaler) {
       await client.query(
-  `
+        `
   UPDATE wholesalers
   SET
     business_name = COALESCE($1, business_name),
@@ -611,28 +584,27 @@ export const editWholesalerBasicAndDocuments = async (
     trade_license_number = COALESCE($17, trade_license_number)
   WHERE id = $18
   `,
-  [
-    wholesaler.businessName,
-    wholesaler.businessCategoryId,
-    wholesaler.ownerName,
-    user?.phone,
-    user?.email,
-    wholesaler.alternatePhoneNumber,
-    wholesaler.websiteUrl,
-    wholesaler.businessAddress,
-    wholesaler.billingAddress,
-    wholesaler.gstNumber,
-    wholesaler.panNumber,
-    wholesaler.aadharNumber,
-    wholesaler.msmeNumber,
-    wholesaler.yearsInBusiness,
-    wholesaler.numberOfEmployees,
-    wholesaler.annualTurnover,
-    wholesaler.tradeLicenseNumber,
-    wholesalerId
-  ]
-);
-
+        [
+          wholesaler.businessName,
+          wholesaler.businessCategoryId,
+          wholesaler.ownerName,
+          user?.phone,
+          user?.email,
+          wholesaler.alternatePhoneNumber,
+          wholesaler.websiteUrl,
+          wholesaler.businessAddress,
+          wholesaler.billingAddress,
+          wholesaler.gstNumber,
+          wholesaler.panNumber,
+          wholesaler.aadharNumber,
+          wholesaler.msmeNumber,
+          wholesaler.yearsInBusiness,
+          wholesaler.numberOfEmployees,
+          wholesaler.annualTurnover,
+          wholesaler.tradeLicenseNumber,
+          wholesalerId,
+        ],
+      );
     }
 
     //update documents (same fields as create)
@@ -656,8 +628,8 @@ export const editWholesalerBasicAndDocuments = async (
           documents.bankStatementUrl,
           documents.businessProofUrl,
           documents.cancelledChequeUrl,
-          wholesalerId
-        ]
+          wholesalerId,
+        ],
       );
     }
 
@@ -665,9 +637,8 @@ export const editWholesalerBasicAndDocuments = async (
 
     return {
       wholesalerId,
-      updated: true
+      updated: true,
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -676,10 +647,7 @@ export const editWholesalerBasicAndDocuments = async (
   }
 };
 
-export const createWholesalerBankDetails = async (
-  userId,
-  bankDetails
-) => {
+export const createWholesalerBankDetails = async (userId, bankDetails) => {
   const client = await pool.connect();
 
   try {
@@ -707,8 +675,8 @@ export const createWholesalerBankDetails = async (
           bankDetails.accountNumber,
           bankDetails.ifscCode,
           bankDetails.upiId,
-          bankDetails.accountType
-        ]
+          bankDetails.accountType,
+        ],
       );
     } else {
       // When API does NOT send account type → DB default works
@@ -730,8 +698,8 @@ export const createWholesalerBankDetails = async (
           bankDetails.accountHolderName,
           bankDetails.accountNumber,
           bankDetails.ifscCode,
-          bankDetails.upiId
-        ]
+          bankDetails.upiId,
+        ],
       );
     }
 
@@ -741,7 +709,6 @@ export const createWholesalerBankDetails = async (
       userId,
       bankDetailsCreated: true,
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -772,17 +739,13 @@ export const getAllUsersBankDetails = async () => {
     FROM user_bank_details b
     JOIN users u ON u.id = b.user_id
     ORDER BY b.created_at DESC;
-    `
+    `,
   );
 
   return rows; // returns full list
 };
 
-export const updateUserBankDetails = async (
-  userId,
-  updateData,
-  adminUser
-) => {
+export const updateUserBankDetails = async (userId, updateData, adminUser) => {
   const client = await pool.connect();
 
   try {
@@ -838,7 +801,7 @@ export const updateUserBankDetails = async (
       WHERE user_id = $${idx}
       RETURNING id, user_id
       `,
-      values
+      values,
     );
 
     if (bankRes.rowCount === 0) {
@@ -852,7 +815,6 @@ export const updateUserBankDetails = async (
       bankDetailsUpdated: true,
       updatedBy: adminUser.id,
     };
-
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -861,14 +823,13 @@ export const updateUserBankDetails = async (
   }
 };
 
-
 export const deleteWholesalerBankDetailsByUserId = async (userId) => {
   const { rowCount } = await pool.query(
     `
     DELETE FROM user_bank_details
     WHERE user_id = $1
     `,
-    [userId]
+    [userId],
   );
 
   if (rowCount === 0) {
@@ -880,5 +841,3 @@ export const deleteWholesalerBankDetailsByUserId = async (userId) => {
     bankDetailsDeleted: true,
   };
 };
-
-

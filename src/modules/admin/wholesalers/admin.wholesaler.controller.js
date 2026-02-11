@@ -3,37 +3,66 @@ import {
   getWholesalerByIdService,
   findAllWholesalersService,
   createWholesalerDocumentsService,
+  getWholesalerDocumentsByWholesalerIdService,
   updateWholesalerStatusService,
   updateWholesalerDocumentStatusService,
   updateWholesalerAndDocumentsService,
   deleteWholesalerByIdService,
   editWholesalerBasicAndDocumentsService,
   createWholesalerBankDetailsService,
+  getWholesalerBankDetailsByUserIdService,
   getAllUsersBankDetailsService,
   updateUserBankDetailsService,
   deleteWholesalerBankDetailsService,
+  updateWholesalerBasicService,
+  updateWholesalerDocumentsService,
 } from "./admin.wholesaler.service.js";
 
 import ApiResponse from "../../../shared/utils/ApiResponse.js";
-
 
 // create wholesaler basic controller
 export const createWholesalerController = async (req, res, next) => {
   console.log("CONTROLLER HIT: createWholesalerController");
 
   try {
-    const result = await createWholesalerBasicService(
+    const result = await createWholesalerBasicService(req.body, req.user);
+
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          result,
+          "Wholesaler basic details created successfully",
+        ),
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// update wholesaler basic controller
+export const updateWholesalerBasicController = async (req, res, next) => {
+  console.log("CONTROLLER HIT: updateWholesalerBasicController");
+
+  try {
+    const { wholesalerId } = req.params;
+
+    const result = await updateWholesalerBasicService(
+      wholesalerId,
       req.body,
-      req.user
+      req.user,
     );
 
-    return res.status(201).json(
-      new ApiResponse(
-        201,
-        result,
-        "Wholesaler basic details created successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "Wholesaler basic details updated successfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }
@@ -48,18 +77,15 @@ export const getWholesalerByIdController = async (req, res, next) => {
 
     const result = await getWholesalerByIdService(wholesalerId);
 
-    return res.status(200).json(    
-
-      new ApiResponse(
-        200,
-        result,
-        "Wholesaler details fetched successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, result, "Wholesaler details fetched successfully"),
+      );
   } catch (error) {
     next(error);
   }
-};    
+};
 
 export const findAllWholesalersController = async (req, res, next) => {
   console.log("CONTROLLER HIT: findAllWholesalersController");
@@ -67,24 +93,16 @@ export const findAllWholesalersController = async (req, res, next) => {
   try {
     const result = await findAllWholesalersService(req.query);
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        result,
-        "Wholesalers fetched successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(new ApiResponse(200, result, "Wholesalers fetched successfully"));
   } catch (error) {
     next(error);
   }
 };
 
 //create wholesaler documents controller
-export const createWholesalerDocumentsController = async (
-  req,
-  res,
-  next
-) => {
+export const createWholesalerDocumentsController = async (req, res, next) => {
   console.log("CONTROLLER HIT: createWholesalerDocumentsController");
 
   try {
@@ -92,16 +110,71 @@ export const createWholesalerDocumentsController = async (
 
     const result = await createWholesalerDocumentsService(
       wholesalerId,
-      req.body
+      req.body,
     );
 
-    return res.status(201).json(
-      new ApiResponse(
-        201,
-        result,
-        "Wholesaler documents uploaded successfully"
-      )
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          result,
+          "Wholesaler documents uploaded successfully",
+        ),
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// update wholesaler documents controller (URL update)
+export const updateWholesalerDocumentsController = async (req, res, next) => {
+  console.log("CONTROLLER HIT: updateWholesalerDocumentsController");
+
+  try {
+    const { wholesalerId } = req.params;
+
+    const result = await updateWholesalerDocumentsService(
+      wholesalerId,
+      req.body,
     );
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "Wholesaler documents updated successfully",
+        ),
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getWholesalerDocumentsByWholesalerIdController = async (
+  req,
+  res,
+  next,
+) => {
+  console.log("CONTROLLER HIT: getWholesalerDocumentsByWholesalerIdController");
+
+  try {
+    const { wholesalerId } = req.params;
+
+    const result =
+      await getWholesalerDocumentsByWholesalerIdService(wholesalerId);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "Wholesaler documents fetched successfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }
@@ -113,14 +186,13 @@ export const updateWholesalerStatusOnlyController = async (req, res, next) => {
     const { wholesalerId } = req.params;
     const { status } = req.body;
 
-    const result = await updateWholesalerStatusService(
-      wholesalerId,
-      status
-    );
+    const result = await updateWholesalerStatusService(wholesalerId, status);
 
-    return res.status(200).json(
-      new ApiResponse(200, result, "Wholesaler status updated successfully")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, result, "Wholesaler status updated successfully"),
+      );
   } catch (error) {
     next(error);
   }
@@ -130,19 +202,21 @@ export const updateWholesalerStatusOnlyController = async (req, res, next) => {
 export const updateWholesalerDocumentsStatusController = async (
   req,
   res,
-  next
+  next,
 ) => {
   try {
     const { wholesalerId } = req.params;
 
     const result = await updateWholesalerDocumentStatusService(
       wholesalerId,
-      req.body
+      req.body,
     );
 
-    return res.status(200).json(
-      new ApiResponse(200, result, "Document status updated successfully")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, result, "Document status updated successfully"),
+      );
   } catch (error) {
     next(error);
   }
@@ -162,16 +236,18 @@ export const verifyWholesalerController = async (req, res, next) => {
     const result = await updateWholesalerAndDocumentsService(
       wholesalerId,
       req.body,
-      req.user
+      req.user,
     );
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        result,
-        "Wholesaler verification completed successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "Wholesaler verification completed successfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }
@@ -186,24 +262,21 @@ export const deleteWholesalerByIdController = async (req, res, next) => {
 
     await deleteWholesalerByIdService(wholesalerId);
 
-    return res.status(200).json(
-      new ApiResponse(200, null, "Wholesaler deleted successfully")
-    );
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "Wholesaler deleted successfully"));
   } catch (error) {
     next(error);
   }
-};  
-
+};
 
 // edit wholesaler basic + documents controller
 export const editWholesalerBasicAndDocumentsController = async (
   req,
   res,
-  next
+  next,
 ) => {
-  console.log(
-    "CONTROLLER HIT: editWholesalerBasicAndDocumentsController"
-  );
+  console.log("CONTROLLER HIT: editWholesalerBasicAndDocumentsController");
 
   try {
     const { wholesalerId } = req.params;
@@ -211,74 +284,86 @@ export const editWholesalerBasicAndDocumentsController = async (
     const result = await editWholesalerBasicAndDocumentsService(
       wholesalerId,
       req.body,
-      req.user // admin
+      req.user, // admin
     );
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        result,
-        "Wholesaler details updated successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, result, "Wholesaler details updated successfully"),
+      );
   } catch (error) {
     next(error);
   }
 };
 
-
-export const createWholesalerBankDetailsController = async (
-  req,
-  res,
-  next
-) => {
+export const createWholesalerBankDetailsController = async (req, res, next) => {
   console.log("CONTROLLER HIT: createWholesalerBankDetailsController");
 
   try {
     const { userId } = req.params;
 
-    const result = await createWholesalerBankDetailsService(
-      userId,
-      req.body
-    );
+    const result = await createWholesalerBankDetailsService(userId, req.body);
 
-    return res.status(201).json(
-      new ApiResponse(
-        201,
-        result,
-        "Wholesaler bank details added successfully"
-      )
-    );
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          result,
+          "Wholesaler bank details added successfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }
 };
 
-export const getAllUsersBankDetailsController = async (
+export const getWholesalerBankDetailsByUserIdController = async (
   req,
   res,
-  next
+  next,
 ) => {
+  console.log("CONTROLLER HIT: getWholesalerBankDetailsByUserIdController");
+
+  try {
+    const { userId } = req.params;
+
+    const result = await getWholesalerBankDetailsByUserIdService(userId);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "Wholesaler bank details fetched successfully",
+        ),
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllUsersBankDetailsController = async (req, res, next) => {
   try {
     const result = await getAllUsersBankDetailsService();
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        result,
-        "All users bank details fetched successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "All users bank details fetched successfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }
 };
 
-export const updateUserBankDetailsController = async (
-  req,
-  res,
-  next
-) => {
+export const updateUserBankDetailsController = async (req, res, next) => {
   console.log("CONTROLLER HIT: updateUserBankDetailsController");
 
   try {
@@ -286,50 +371,40 @@ export const updateUserBankDetailsController = async (
 
     // validate userId
     if (Number.isNaN(userId)) {
-      return res.status(400).json(
-        new ApiResponse(
-          400,
-          null,
-          "Invalid userId"
-        )
-      );
+      return res.status(400).json(new ApiResponse(400, null, "Invalid userId"));
     }
 
     const result = await updateUserBankDetailsService(
       userId,
       req.body,
-      req.user // admin user from auth middleware
+      req.user, // admin user from auth middleware
     );
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        result,
-        "User bank details updated successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, result, "User bank details updated successfully"),
+      );
   } catch (error) {
     next(error);
   }
 };
 
-export const deleteWholesalerBankDetailsController = async (
-  req,
-  res,
-  next
-) => {
+export const deleteWholesalerBankDetailsController = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
     const result = await deleteWholesalerBankDetailsService(userId);
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        result,
-        "Wholesaler bank details deleted successfully"
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          "Wholesaler bank details deleted successfully",
+        ),
+      );
   } catch (error) {
     next(error);
   }

@@ -92,6 +92,113 @@ export const createWholesalerBasic = async (data, adminUser) => {
   }
 };
 
+export const updateWholesalerBasic = async (wholesalerId, data, adminUser) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { user, wholesaler } = data;
+    const { id: adminId, role: adminRole } = adminUser;
+
+    // get wholesaler user_id
+    const res = await client.query(
+      `
+      SELECT user_id
+      FROM wholesalers
+      WHERE id = $1
+      `,
+      [wholesalerId],
+    );
+
+    if (res.rowCount === 0) {
+      throw new Error("WHOLESALER_NOT_FOUND");
+    }
+
+    const userId = res.rows[0].user_id;
+
+    // update user
+    await client.query(
+      `
+      UPDATE users
+      SET
+        username = $1,
+        email    = $2,
+        phone    = $3,
+        updated_at = NOW()
+      WHERE id = $4
+      `,
+      [user.username, user.email.toLowerCase(), user.phone, userId],
+    );
+
+    // update wholesaler
+    const wholesalerRes = await client.query(
+      `
+      UPDATE wholesalers
+      SET
+        business_name          = $1,
+        business_category_id   = $2,
+        owner_name             = $3,
+        phone_number           = $4,
+        email                  = $5,
+        alternate_phone_number = $6,
+        website_url            = $7,
+        business_address       = $8,
+        billing_address        = $9,
+        gst_number             = $10,
+        pan_number             = $11,
+        aadhar_number          = $12,
+        msme_number            = $13,
+        years_in_business      = $14,
+        number_of_employees    = $15,
+        annual_turnover        = $16,
+        trade_license_number   = $17,
+        verified_by_id          = $18,
+        verified_by_role        = $19,
+        updated_at             = NOW()
+      WHERE id = $20
+      RETURNING id, status
+      `,
+      [
+        wholesaler.businessName,
+        wholesaler.businessCategoryId,
+        wholesaler.ownerName,
+        user.phone,
+        user.email,
+        wholesaler.alternatePhoneNumber,
+        wholesaler.websiteUrl,
+        wholesaler.businessAddress,
+        wholesaler.billingAddress,
+        wholesaler.gstNumber,
+        wholesaler.panNumber,
+        wholesaler.aadharNumber,
+        wholesaler.msmeNumber,
+        wholesaler.yearsInBusiness,
+        wholesaler.numberOfEmployees,
+        wholesaler.annualTurnover,
+        wholesaler.tradeLicenseNumber,
+        adminId,
+        adminRole,
+        wholesalerId,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      userId,
+      wholesalerId: wholesalerRes.rows[0].id,
+      status: wholesalerRes.rows[0].status,
+      updated: true,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export const getWholesalerById = async (wholesalerId) => {
   const res = await pool.query(
     `
@@ -289,6 +396,105 @@ export const createWholesalerDocuments = async (wholesalerId, documents) => {
   } finally {
     client.release();
   }
+};
+
+export const updateWholesalerDocuments = async (wholesalerId, documents) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // ensure documents row exists
+    const check = await client.query(
+      `
+      SELECT id
+      FROM wholesaler_documents
+      WHERE wholesaler_id = $1
+      `,
+      [wholesalerId],
+    );
+
+    if (check.rowCount === 0) {
+      throw new Error("DOCUMENTS_NOT_FOUND");
+    }
+
+    await client.query(
+      `
+      UPDATE wholesaler_documents
+      SET
+        gst_certificate_url = $1,
+        pan_card_url = $2,
+        aadhar_card_url = $3,
+        bank_statement_url = $4,
+        business_proof_url = $5,
+        cancelled_cheque_url = $6,
+        updated_at = NOW()
+      WHERE wholesaler_id = $7
+      `,
+      [
+        documents.gstCertificateUrl,
+        documents.panCardUrl,
+        documents.aadharCardUrl,
+        documents.bankStatementUrl,
+        documents.businessProofUrl,
+        documents.cancelledChequeUrl,
+        wholesalerId,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      wholesalerId,
+      documentsUpdated: true,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getWholesalerDocumentsByWholesalerId = async (wholesalerId) => {
+  const res = await pool.query(
+    `
+    SELECT
+      id,
+      wholesaler_id,
+      user_id,
+
+      gst_certificate_url,
+      gst_certificate_status,
+
+      pan_card_url,
+      pan_card_status,
+
+      aadhar_card_url,
+      aadhar_card_status,
+
+      bank_statement_url,
+      bank_statement_status,
+
+      business_proof_url,
+      business_proof_status,
+
+      cancelled_cheque_url,
+      cancelled_cheque_status,
+
+      created_at,
+      updated_at
+    FROM wholesaler_documents
+    WHERE wholesaler_id = $1
+    `,
+    [wholesalerId],
+  );
+
+  if (res.rowCount === 0) {
+    throw new Error("DOCUMENTS_NOT_FOUND");
+  }
+
+  return res.rows[0];
 };
 
 export const updateWholesalerStatus = async (wholesalerId, status) => {
@@ -715,6 +921,33 @@ export const createWholesalerBankDetails = async (userId, bankDetails) => {
   } finally {
     client.release();
   }
+};
+
+export const getWholesalerBankDetailsByUserId = async (userId) => {
+  const res = await pool.query(
+    `
+    SELECT
+      id AS bank_detail_id,
+      user_id,
+      bank_name,
+      account_holder_name,
+      account_number,
+      ifsc_code,
+      upi_id,
+      account_type,
+      created_at,
+      updated_at
+    FROM user_bank_details
+    WHERE user_id = $1
+    `,
+    [userId],
+  );
+
+  if (res.rowCount === 0) {
+    throw new Error("BANK_DETAILS_NOT_FOUND");
+  }
+
+  return res.rows[0];
 };
 
 export const getAllUsersBankDetails = async () => {

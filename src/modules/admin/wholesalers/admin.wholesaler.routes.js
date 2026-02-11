@@ -5,15 +5,19 @@ import {
   getWholesalerByIdController,
   findAllWholesalersController,
   createWholesalerDocumentsController,
+  getWholesalerDocumentsByWholesalerIdController,
   updateWholesalerStatusOnlyController,
   updateWholesalerDocumentsStatusController,
   verifyWholesalerController,
   deleteWholesalerByIdController,
   editWholesalerBasicAndDocumentsController,
   createWholesalerBankDetailsController,
+  getWholesalerBankDetailsByUserIdController,
   getAllUsersBankDetailsController,
   updateUserBankDetailsController,
-  deleteWholesalerBankDetailsController
+  deleteWholesalerBankDetailsController,
+  updateWholesalerBasicController,
+  updateWholesalerDocumentsController,
 } from "./admin.wholesaler.controller.js";
 
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
@@ -29,7 +33,7 @@ import {
   verifyWholesalerSchema,
   editWholesalerBasicAndDocumentsSchema,
   createWholesalerBankDetailsSchema,
-  editWholesalerBankDetailsSchema
+  editWholesalerBankDetailsSchema,
 } from "./admin.wholesaler.schema.js";
 
 const router = express.Router();
@@ -40,15 +44,22 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(createWholesalerSchema),
-  createWholesalerController
+  createWholesalerController,
 );
 
+/* ================= UPDATE BASIC ================= */
+router.patch(
+  "/:wholesalerId/basic",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  updateWholesalerBasicController,
+);
 
 router.get(
   "/bank-details",
   authenticate,
   authorize(ROLES.ADMIN),
-  getAllUsersBankDetailsController
+  getAllUsersBankDetailsController,
 );
 
 /* ================= GET WHOLESALER BY ID ================= */
@@ -56,17 +67,16 @@ router.get(
   "/:wholesalerId",
   authenticate,
   authorize(ROLES.ADMIN),
-  getWholesalerByIdController
-);    
+  getWholesalerByIdController,
+);
 
 /* ================= GET ALL WHOLESALERS ================= */
 router.get(
   "/",
   authenticate,
   authorize(ROLES.ADMIN),
-  findAllWholesalersController
-);  
-
+  findAllWholesalersController,
+);
 
 /* ================= STAGE 2 — UPLOAD DOCUMENTS ================= */
 router.post(
@@ -74,7 +84,22 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(createWholesalerDocumentsSchema),
-  createWholesalerDocumentsController
+  createWholesalerDocumentsController,
+);
+
+/* ================= UPDATE DOCUMENTS (URL UPDATE) ================= */
+router.patch(
+  "/:wholesalerId/documents",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  updateWholesalerDocumentsController,
+);
+
+router.get(
+  "/:wholesalerId/documents",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  getWholesalerDocumentsByWholesalerIdController,
 );
 
 /* ================= STAGE 4 — MANUAL WHOLESALER STATUS ONLY ================= */
@@ -83,7 +108,7 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(updateWholesalerStatusSchema),
-  updateWholesalerStatusOnlyController
+  updateWholesalerStatusOnlyController,
 );
 
 /* ================= STAGE 5 — MANUAL DOCUMENT STATUS ONLY ================= */
@@ -92,7 +117,7 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(updateWholesalerDocumentsStatusSchema),
-  updateWholesalerDocumentsStatusController
+  updateWholesalerDocumentsStatusController,
 );
 
 /* ================= STAGE 3 — FINAL VERIFY ================= */
@@ -101,22 +126,22 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(verifyWholesalerSchema),
-  verifyWholesalerController
+  verifyWholesalerController,
 );
 
 router.delete(
   "/:wholesalerId",
   authenticate,
   authorize(ROLES.ADMIN),
-  deleteWholesalerByIdController    
-)
+  deleteWholesalerByIdController,
+);
 
 router.patch(
   "/:wholesalerId/edit-profile",
   authenticate,
   authorize(ROLES.ADMIN),
   validate(editWholesalerBasicAndDocumentsSchema),
-  editWholesalerBasicAndDocumentsController
+  editWholesalerBasicAndDocumentsController,
 );
 
 router.post(
@@ -124,14 +149,21 @@ router.post(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(createWholesalerBankDetailsSchema),
-  createWholesalerBankDetailsController
+  createWholesalerBankDetailsController,
+);
+
+router.get(
+  "/:userId/bank-details",
+  authenticate,
+  authorize(ROLES.ADMIN),
+  getWholesalerBankDetailsByUserIdController,
 );
 
 router.delete(
   "/:userId/bank-details",
   authenticate,
   authorize(ROLES.ADMIN),
-  deleteWholesalerBankDetailsController
+  deleteWholesalerBankDetailsController,
 );
 
 router.patch(
@@ -139,10 +171,7 @@ router.patch(
   authenticate,
   authorize(ROLES.ADMIN),
   validate(editWholesalerBankDetailsSchema),
-  updateUserBankDetailsController
+  updateUserBankDetailsController,
 );
-
-  
-
 
 export default router;

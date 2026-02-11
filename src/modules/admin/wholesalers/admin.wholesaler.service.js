@@ -3,24 +3,26 @@ import {
   getWholesalerById,
   findAllWholesalers,
   createWholesalerDocuments,
+  getWholesalerDocumentsByWholesalerId,
   updateWholesalerStatus,
   updateWholesalerDocumentStatus,
   updateWholesalerAndDocuments,
   deleteWholesalerById,
   editWholesalerBasicAndDocuments,
   createWholesalerBankDetails,
+  getWholesalerBankDetailsByUserId,
   getAllUsersBankDetails,
   updateUserBankDetails,
   deleteWholesalerBankDetailsByUserId,
+  updateWholesalerBasic,
+  updateWholesalerDocuments,
 } from "./admin.wholesaler.repository.js";
-
 
 //CREATE WHOLESALER BASIC (USER + BUSINESS)
 export const createWholesalerBasicService = async (data, adminUser) => {
   try {
     return await createWholesalerBasic(data, adminUser);
   } catch (error) {
-
     if (error.code === "23505") {
       const err = new Error("DUPLICATE_WHOLESALER");
       err.code = "DUPLICATE_WHOLESALER";
@@ -46,16 +48,48 @@ export const createWholesalerBasicService = async (data, adminUser) => {
   }
 };
 
+// UPDATE WHOLESALER BASIC (BUSINESS + USER)
+export const updateWholesalerBasicService = async (
+  wholesalerId,
+  data,
+  adminUser,
+) => {
+  try {
+    return await updateWholesalerBasic(wholesalerId, data, adminUser);
+  } catch (error) {
+    // Wholesaler not found
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Foreign key violation
+    if (error.code === "23503") {
+      const err = new Error("INVALID_REFERENCE");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Not-null constraint violation
+    if (error.code === "23502") {
+      const err = new Error("MISSING_REQUIRED_FIELD");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error;
+  }
+};
+
 //get WHOLESALER BY ID SERVICE
 export const getWholesalerByIdService = async (wholesalerId) => {
   try {
     return await getWholesalerById(wholesalerId);
   } catch (error) {
-
     if (error.message === "WHOLESALER_NOT_FOUND") {
       error.statusCode = 404;
       throw error;
-    }                 
+    }
     throw error;
   }
 };
@@ -65,7 +99,6 @@ export const findAllWholesalersService = async (query) => {
   try {
     return await findAllWholesalers(query);
   } catch (error) {
-
     // invalid number / pagination errors
     if (error.code === "22P02") {
       const err = new Error("INVALID_QUERY_PARAMS");
@@ -77,16 +110,14 @@ export const findAllWholesalersService = async (query) => {
   }
 };
 
-
 //CREATE WHOLESALER DOCUMENTS
 export const createWholesalerDocumentsService = async (
   wholesalerId,
-  documents
+  documents,
 ) => {
   try {
     return await createWholesalerDocuments(wholesalerId, documents);
   } catch (error) {
-
     if (error.message === "WHOLESALER_NOT_FOUND") {
       error.statusCode = 404;
       throw error;
@@ -108,6 +139,54 @@ export const createWholesalerDocumentsService = async (
   }
 };
 
+// UPDATE WHOLESALER DOCUMENTS (URL UPDATE)
+export const updateWholesalerDocumentsService = async (
+  wholesalerId,
+  documents,
+) => {
+  try {
+    return await updateWholesalerDocuments(wholesalerId, documents);
+  } catch (error) {
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (error.message === "DOCUMENTS_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (error.code === "23502") {
+      const err = new Error("MISSING_DOCUMENT_FIELD");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    throw error;
+  }
+};
+
+export const getWholesalerDocumentsByWholesalerIdService = async (
+  wholesalerId,
+) => {
+  try {
+    return await getWholesalerDocumentsByWholesalerId(wholesalerId);
+  } catch (error) {
+    if (error.message === "WHOLESALER_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (error.message === "DOCUMENTS_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
+
+    throw error;
+  }
+};
+
 //Update wholesaler status
 
 export const updateWholesalerStatusService = async (wholesalerId, status) => {
@@ -123,7 +202,6 @@ export const updateWholesalerStatusService = async (wholesalerId, status) => {
       data: result,
     };
   } catch (error) {
-
     if (error.message === "Wholesaler not found") {
       const err = new Error("WHOLESALER_NOT_FOUND");
       err.statusCode = 404;
@@ -139,12 +217,11 @@ export const updateWholesalerStatusService = async (wholesalerId, status) => {
 // update wholesaler documents status
 export const updateWholesalerDocumentStatusService = async (
   wholesalerId,
-  updates
+  updates,
 ) => {
   try {
     return await updateWholesalerDocumentStatus(wholesalerId, updates);
   } catch (error) {
-
     if (error.message === "DOCUMENTS_NOT_FOUND") {
       const err = new Error("DOCUMENTS_NOT_FOUND");
       err.statusCode = 404;
@@ -161,16 +238,15 @@ export const updateWholesalerDocumentStatusService = async (
 export const updateWholesalerAndDocumentsService = async (
   wholesalerId,
   updateData,
-  adminUser
+  adminUser,
 ) => {
   try {
     return await updateWholesalerAndDocuments(
       wholesalerId,
       updateData,
-      adminUser
+      adminUser,
     );
   } catch (error) {
-
     // Wholesaler not found (manual throw)
     if (error.message === "WHOLESALER_NOT_FOUND") {
       error.statusCode = 404;
@@ -202,14 +278,11 @@ export const updateWholesalerAndDocumentsService = async (
   }
 };
 
-
 //delete wholesaler by id
-export const deleteWholesalerByIdService = async(wholesalerId) => {
-
+export const deleteWholesalerByIdService = async (wholesalerId) => {
   try {
     return await deleteWholesalerById(wholesalerId);
   } catch (error) {
-
     if (error.message === "WHOLESALER_NOT_FOUND") {
       error.statusCode = 404;
       throw error;
@@ -217,23 +290,18 @@ export const deleteWholesalerByIdService = async(wholesalerId) => {
 
     throw error;
   }
-}
+};
 
 //edit wholesaler basic and documents
 // EDIT WHOLESALER (USER + BUSINESS + DOCUMENTS)
 export const editWholesalerBasicAndDocumentsService = async (
   wholesalerId,
   data,
-  adminUser
+  adminUser,
 ) => {
   try {
-    return await editWholesalerBasicAndDocuments(
-      wholesalerId,
-      data,
-      adminUser
-    );
+    return await editWholesalerBasicAndDocuments(wholesalerId, data, adminUser);
   } catch (error) {
-
     // Wholesaler not found
     if (error.message === "WHOLESALER_NOT_FOUND") {
       error.statusCode = 404;
@@ -260,13 +328,11 @@ export const editWholesalerBasicAndDocumentsService = async (
 
 export const createWholesalerBankDetailsService = async (
   userId,
-  bankDetails
+  bankDetails,
 ) => {
   try {
     return await createWholesalerBankDetails(userId, bankDetails);
-
   } catch (error) {
-
     // FK violation → user_id not found in users table
     if (error.code === "23503") {
       const err = new Error("USER_NOT_FOUND");
@@ -281,6 +347,18 @@ export const createWholesalerBankDetailsService = async (
       throw err;
     }
 
+    throw error;
+  }
+};
+
+export const getWholesalerBankDetailsByUserIdService = async (userId) => {
+  try {
+    return await getWholesalerBankDetailsByUserId(userId);
+  } catch (error) {
+    if (error.message === "BANK_DETAILS_NOT_FOUND") {
+      error.statusCode = 404;
+      throw error;
+    }
     throw error;
   }
 };
@@ -303,13 +381,11 @@ export const deleteWholesalerBankDetailsService = async (userId) => {
 export const updateUserBankDetailsService = async (
   userId,
   updateData,
-  adminUser
+  adminUser,
 ) => {
   try {
     return await updateUserBankDetails(userId, updateData, adminUser);
-
   } catch (error) {
-
     if (error.message === "BANK_DETAILS_NOT_FOUND") {
       error.statusCode = 404;
       throw error;

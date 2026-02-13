@@ -6,7 +6,7 @@ export const createWholesalerBasic = async (data, adminUser) => {
   try {
     await client.query("BEGIN");
 
-    const { user, wholesaler } = data;
+    const { user, wholesaler, dynamicInputs } = data;
     const { id: adminId, role: adminRole } = adminUser;
 
     //create user
@@ -43,13 +43,14 @@ export const createWholesalerBasic = async (data, adminUser) => {
         number_of_employees,
         annual_turnover,
         trade_license_number,
+        dynamic_inputs,
         created_by_id,
         created_by_role
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,
-        $19,$20
+        $19,$20,$21
       )
       RETURNING id, status
       `,
@@ -72,6 +73,7 @@ export const createWholesalerBasic = async (data, adminUser) => {
         wholesaler.numberOfEmployees,
         wholesaler.annualTurnover,
         wholesaler.tradeLicenseNumber,
+        dynamicInputs || {},
         adminId,
         adminRole,
       ],
@@ -98,7 +100,7 @@ export const updateWholesalerBasic = async (wholesalerId, data, adminUser) => {
   try {
     await client.query("BEGIN");
 
-    const { user, wholesaler } = data;
+    const { user, wholesaler, dynamicInputs } = data;
     const { id: adminId, role: adminRole } = adminUser;
 
     // get wholesaler user_id
@@ -153,10 +155,11 @@ export const updateWholesalerBasic = async (wholesalerId, data, adminUser) => {
         number_of_employees    = $15,
         annual_turnover        = $16,
         trade_license_number   = $17,
-        verified_by_id          = $18,
-        verified_by_role        = $19,
+        dynamic_inputs         = $18,
+        verified_by_id         = $19,
+        verified_by_role       = $20,
         updated_at             = NOW()
-      WHERE id = $20
+      WHERE id = $21
       RETURNING id, status
       `,
       [
@@ -177,6 +180,7 @@ export const updateWholesalerBasic = async (wholesalerId, data, adminUser) => {
         wholesaler.numberOfEmployees,
         wholesaler.annualTurnover,
         wholesaler.tradeLicenseNumber,
+        dynamicInputs || {},
         adminId,
         adminRole,
         wholesalerId,
@@ -731,7 +735,7 @@ export const editWholesalerBasicAndDocuments = async (
   try {
     await client.query("BEGIN");
 
-    const { user, wholesaler, documents } = data;
+    const { user, wholesaler, documents, dynamicInputs } = data;
     const { id: adminId, role: adminRole } = adminUser;
 
     //get wholesaler user_id
@@ -787,8 +791,9 @@ export const editWholesalerBasicAndDocuments = async (
     years_in_business = COALESCE($14, years_in_business),
     number_of_employees = COALESCE($15, number_of_employees),
     annual_turnover = COALESCE($16, annual_turnover),
-    trade_license_number = COALESCE($17, trade_license_number)
-  WHERE id = $18
+    trade_license_number = COALESCE($17, trade_license_number),
+    dynamic_inputs = COALESCE($18, dynamic_inputs)
+  WHERE id = $19
   `,
         [
           wholesaler.businessName,
@@ -808,6 +813,7 @@ export const editWholesalerBasicAndDocuments = async (
           wholesaler.numberOfEmployees,
           wholesaler.annualTurnover,
           wholesaler.tradeLicenseNumber,
+          dynamicInputs || null,
           wholesalerId,
         ],
       );

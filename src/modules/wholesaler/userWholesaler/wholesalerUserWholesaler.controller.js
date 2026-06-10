@@ -6,8 +6,18 @@ import {
   getWholesalerBankDetailsService,
   updateWholesalerBankDetailsService,
   deleteWholesalerBankDetailsService,
+  getWholesalerProfileService,
 } from "./wholesalerUserWholesaler.service.js";
 import ApiResponse from "../../../shared/utils/ApiResponse.js";
+
+export const getWholesalerProfileController = async (req, res, next) => {
+  try {
+    const result = await getWholesalerProfileService(req.user);
+    return res.status(200).json(new ApiResponse(200, result));
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const createWholesalerController = async (req, res, next) => {
   try {

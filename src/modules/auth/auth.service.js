@@ -2,9 +2,57 @@ import {
   createUser,
   findUserByPhone,
   userSignupRepo,
+  findUserById,
 } from "./auth.repository.js";
 
 import { generateToken } from "../../shared/utils/jwtToken.js";
+
+import { findWholesalerByUserId, getWholesalerBankDetailsFromWholesaler } from "../wholesaler/userWholesaler/wholesalerUserWholesaler.repository.js";
+import { findRetailerProfileByUserId } from "../retailer/profile/retailer.profile.repository.js";
+import { findAgentProfileById } from "../agent/profile/agent.profile.repository.js";
+
+/* =========================
+   GET ME (PROFILE)
+========================= */
+export const getMeService = async (userId) => {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+  return user;
+};
+
+/* =========================
+   GET FULL PROFILE
+========================= */
+export const getFullProfileService = async (userId) => {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  let profileData = {};
+  
+  if (user.role === "wholesaler") {
+    const wholesalerData = await findWholesalerByUserId(userId);
+    let bankDetails = null;
+    try {
+      bankDetails = await getWholesalerBankDetailsFromWholesaler({ id: userId });
+    } catch (error) {
+      // bank details might not exist
+    }
+    profileData = { ...wholesalerData, bankDetails };
+  } else if (user.role === "retailer") {
+    profileData = await findRetailerProfileByUserId(userId);
+  } else if (user.role === "agent") {
+    profileData = await findAgentProfileById(userId);
+  }
+
+  return {
+    ...user,
+    profile: profileData || null
+  };
+};
 
 /* =========================
    REGISTER (NON-OTP FLOW)

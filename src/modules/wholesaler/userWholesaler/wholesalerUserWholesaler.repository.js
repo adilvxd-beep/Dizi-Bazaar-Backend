@@ -613,6 +613,18 @@ export const deleteWholesalerBankDetailsFromWholesaler = async (user) => {
   }
 };
 
+export const findWholesalerByUserId = async (userId) => {
+  const result = await pool.query(
+    `SELECT w.*, wd.gst_certificate_url, wd.pan_card_url, wd.aadhar_card_url, wd.bank_statement_url, wd.business_proof_url, wd.cancelled_cheque_url, bc.name as business_category_name
+     FROM wholesalers w
+     LEFT JOIN wholesaler_documents wd ON w.id = wd.wholesaler_id
+     LEFT JOIN business_categories bc ON w.business_category_id = bc.id
+     WHERE w.user_id = $1`,
+    [userId]
+  );
+  return result.rows[0];
+};
+
 
 
 

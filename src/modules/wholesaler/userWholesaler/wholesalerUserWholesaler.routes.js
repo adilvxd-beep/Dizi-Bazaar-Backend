@@ -7,12 +7,18 @@ import {
   getWholesalerBankDetailsController,
   updateWholesalerBankDetailsController,
   deleteWholesalerBankDetailsController,
+  getWholesalerProfileController,
 } from "./wholesalerUserWholesaler.controller.js";
 import { createWholesalerSchema, updateWholesalerSchema, updateWholesalerBankDetailsSchema } from "./wholesalerUserWholesaler.schema.js";
 import { authenticate } from "../../../shared/middlewares/auth.middleware.js";
 import { validate } from "../../../shared/middlewares/validate.middleware.js";
 
 const router = express.Router();
+
+router.get("/",
+  authenticate,
+  getWholesalerProfileController
+);
 
 router.post("/",
   authenticate,

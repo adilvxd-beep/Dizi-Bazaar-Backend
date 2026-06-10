@@ -6,7 +6,12 @@ import {
   getWholesalerBankDetailsFromWholesaler,
   updateWholesalerBankDetailsFromWholesaler,
   deleteWholesalerBankDetailsFromWholesaler,
+  findWholesalerByUserId,
 } from "./wholesalerUserWholesaler.repository.js";
+
+export const getWholesalerProfileService = async (user) => {
+  return await findWholesalerByUserId(user.id);
+};
 
 export const createWholesalerService = async (data, user) => {
   try {

@@ -1,6 +1,24 @@
-import { registerUser, loginUser, userSignupService, verifyOtpAndSignupService } from "./auth.service.js";
+import { registerUser, loginUser, userSignupService, verifyOtpAndSignupService, getMeService, getFullProfileService } from "./auth.service.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 import ApiError from "../../shared/utils/ApiError.js";
+
+export const getMe = async (req, res, next) => {
+  try {
+    const user = await getMeService(req.user.id);
+    res.json(new ApiResponse(200, user));
+  } catch (error) {
+    next(new ApiError(500, error.message));
+  }
+};
+
+export const getFullProfile = async (req, res, next) => {
+  try {
+    const fullProfile = await getFullProfileService(req.user.id);
+    res.json(new ApiResponse(200, fullProfile));
+  } catch (error) {
+    next(new ApiError(500, error.message));
+  }
+};
 
 export const register = async (req, res, next) => {
   try {

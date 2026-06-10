@@ -30,6 +30,18 @@ export const findUserByPhone = async (phone) => {
 };
 
 /* =========================
+   FIND USER BY ID
+========================= */
+export const findUserById = async (id) => {
+  const result = await pool.query(
+    `SELECT id, username, phone, role, business_category_id, is_verified FROM users WHERE id = $1`,
+    [id]
+  );
+
+  return result.rows[0];
+};
+
+/* =========================
    USER SIGNUP REPO
 ========================= */
 export const userSignupRepo = async ({

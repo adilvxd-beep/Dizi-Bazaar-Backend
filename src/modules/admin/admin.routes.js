@@ -7,6 +7,10 @@ import wholesaler from "./wholesalers/admin.wholesaler.routes.js";
 import productsRoute from "./products/admin.products.routes.js";
 import jobPostsRoutes from "./job_posts/routes.js";
 import customField from "./custom_field/customField.route.js";
+import operationsRoutes from "./operations/operations.routes.js";
+import tutorialsRoutes from "./tutorials/tutorials.routes.js";
+import rbacRoutes from "./rbac/rbac.routes.js";
+import leadsRoutes from "./leads/leads.routes.js";
 
 const router = express.Router();
 
@@ -18,5 +22,9 @@ router.use("/categories", categoryRoutes);
 router.use("/wholesalers", wholesaler);
 router.use("/products", productsRoute);
 router.use("/custom-fields", customField);
+router.use("/operations", operationsRoutes);
+router.use("/tutorials", tutorialsRoutes);
+router.use("/rbac", rbacRoutes);
+router.use("/leads", leadsRoutes);
 
 export default router;

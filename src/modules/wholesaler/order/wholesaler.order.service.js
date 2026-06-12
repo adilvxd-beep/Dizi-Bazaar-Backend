@@ -1,12 +1,17 @@
 import {
-  findOrdersByUserId,
-  createOrderForUser,
+  findBroadcastedOrders,
+  acceptOrderItems,
+  findOrdersByWholesalerId
 } from "./wholesaler.order.repository.js";
 
-export const getAllOrders = async (userId) => {
-  return await findOrdersByUserId(userId);
+export const getPendingBroadcasts = async (wholesalerId) => {
+  return await findBroadcastedOrders(wholesalerId);
 };
 
-export const createNewOrder = async (orderData, userId) => {
-  return await createOrderForUser(orderData, userId);
+export const acceptBroadcastItems = async (wholesalerId, orderId, itemIds) => {
+  return await acceptOrderItems(wholesalerId, orderId, itemIds);
+};
+
+export const getFulfilledOrders = async (wholesalerId) => {
+  return await findOrdersByWholesalerId(wholesalerId);
 };

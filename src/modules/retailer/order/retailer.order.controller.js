@@ -13,7 +13,7 @@ export const getOrders = async (req, res, next) => {
 export const createOrder = async (req, res, next) => {
   try {
     const order = await createNewOrder(req.body, req.user.id);
-    res.status(201).json(new ApiResponse(201, order));
+    res.status(201).json(new ApiResponse(201, order, "Order broadcasted to active wholesalers successfully"));
   } catch (error) {
     next(error);
   }
